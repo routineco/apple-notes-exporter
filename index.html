@@ -1,0 +1,41 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Apple Notes Importer</title>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+            padding: 20px;
+            max-width: 600px;
+            margin: 0 auto;
+        }
+        button {
+            padding: 10px 20px;
+            font-size: 14px;
+            border-radius: 5px;
+            border: none;
+            background-color: #007AFF;
+            color: white;
+            cursor: pointer;
+        }
+        button:disabled {
+            background-color: #ccc;
+            cursor: not-allowed;
+        }
+        #progressText {
+            margin: 10px 0;
+            color: #666;
+        }
+        #result {
+            margin-top: 10px;
+        }
+    </style>
+</head>
+<body>
+    <h1>Apple Notes Importer</h1>
+    <button id="exportButton">Process Notes</button>
+    <div id="progressText"></div>
+    <div id="result"></div>
+    <script src="script.js"></script>
+</body>
+</html> 

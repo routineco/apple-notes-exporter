@@ -1,0 +1,225 @@
+ObjC.import('stdlib');
+ObjC.import('Foundation');
+ObjC.import('AppKit');
+
+function run() {
+    try {
+        console.log('Starting export process...');
+        
+        const fileManager = $.NSFileManager.defaultManager;
+
+        // Define export folder
+        const homePath = $.NSHomeDirectory().js;
+        const exportFolder = `${homePath}/Documents/ExportedNotes`;
+
+        console.log(`Creating export folder at: ${exportFolder}`);
+
+        // Create folder if it doesn't exist
+        if (!fileManager.fileExistsAtPath($(exportFolder))) {
+            fileManager.createDirectoryAtPathWithIntermediateDirectoriesAttributesError(
+                $(exportFolder),
+                true,
+                null,
+                null
+            );
+        }
+
+        function sanitizeName(name) {
+            if (!name || typeof name !== 'string') return 'Untitled';
+            return name.replace(/[\/\\?%*:|"<>]/g, '-').slice(0, 100); // Remove illegal characters & truncate
+        }
+
+        function createFolderIfNeeded(folderPath) {
+            if (!fileManager.fileExistsAtPath($(folderPath))) {
+                fileManager.createDirectoryAtPathWithIntermediateDirectoriesAttributesError(
+                    $(folderPath),
+                    true,
+                    null,
+                    null
+                );
+            }
+            return folderPath;
+        }
+
+        // Access Notes app
+        console.log('Accessing Notes application...');
+        const Notes = Application('Notes');
+
+        // Get all folders using JXA
+        const folders = Notes.folders();
+        console.log(`Found ${folders.length} folders`);
+
+        let totalNotes = 0;
+        let exportedCount = 0;
+        let currentNoteIndex = 0;
+
+        // First count total notes
+        for (let i = 0; i < folders.length; i++) {
+            const folder = folders[i];
+            const notes = folder.notes();
+            totalNotes += notes.length;
+        }
+
+        // Process each folder
+        for (let i = 0; i < folders.length; i++) {
+            const folder = folders[i];
+            try {
+                if (!folder || !folder.name) {
+                    console.log("Skipping invalid folder");
+                    continue;
+                }
+                
+                const folderName = folder.name();
+                console.log(`Processing folder: ${folderName}`);
+
+                // Get folder path
+                let currentFolder = folder;
+                let folderPath = [];
+                
+                while (currentFolder) {
+                    try {
+                        const name = currentFolder.name();
+                        if (!name) {
+                            console.log("Folder name is null or empty");
+                            break;
+                        }
+                        
+                        folderPath.unshift(name);
+                        console.log(`Added folder to path: ${name}`);
+                        
+                        // If we've reached "iCloud", we're at the top
+                        if (name === "iCloud") {
+                            console.log("Reached iCloud root folder");
+                            break;
+                        }
+                        
+                        // Get the container, but check if it's null or invalid first
+                        const nextContainer = currentFolder.container();
+                        if (!nextContainer || nextContainer.toString() === "[object NSNull]") {
+                            console.log("Reached top of hierarchy");
+                            break;
+                        }
+                        
+                        currentFolder = nextContainer;
+                    } catch (e) {
+                        console.log(`Error in folder hierarchy: ${e.message}`);
+                        // Don't treat this as fatal - use what we have so far
+                        break;
+                    }
+                }
+
+                // Create folder structure
+                let fullPath = exportFolder;
+                for (const pathPart of folderPath) {
+                    if (!pathPart) {
+                        console.log("Skipping empty path part");
+                        continue;
+                    }
+                    fullPath = createFolderIfNeeded(`${fullPath}/${sanitizeName(pathPart)}`);
+                }
+
+                // Get notes in this folder
+                let notes = [];
+                try {
+                    // First check if we can get notes from this folder
+                    if (folder.toString() === "[object NSNull]") {
+                        console.log(`Folder ${folderName} is null - skipping`);
+                        continue;
+                    }
+                    
+                    // Get notes directly from the folder
+                    notes = folder.notes();
+                    
+                    // Convert the notes to a proper array if needed
+                    if (notes && typeof notes.length === 'number') {
+                        console.log(`Found ${notes.length} notes in folder: ${folderName}`);
+                    } else {
+                        console.log(`No notes found in folder: ${folderName}`);
+                        notes = [];
+                        continue;
+                    }
+                } catch (e) {
+                    console.log(`Error getting notes from folder ${folderName}: ${e.message}`);
+                    continue;
+                }
+                
+                // Process each note
+                for (let j = 0; j < notes.length; j++) {
+                    try {
+                        const note = notes[j];
+                        currentNoteIndex++;
+                        
+                        if (!note || !note.name) {
+                            console.log("Skipping invalid note");
+                            continue;
+                        }
+
+                        const title = note.name();
+                        if (!title) {
+                            console.log('Skipping note without title');
+                            continue;
+                        }
+
+                        console.log(`Processing note: ${title}`);
+                        const body = note.body();
+
+                        // Output progress
+                        console.log(`PROGRESS:${exportedCount}/${totalNotes}:${title}`);
+
+                        const cleanTitle = sanitizeName(title);
+                        const filePath = `${fullPath}/${cleanTitle}.html`;
+
+                        // Create HTML document
+                        const content = `<!DOCTYPE html>
+<html>
+<head>
+    <title>${title}</title>
+    <meta charset="utf-8">
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+            line-height: 1.6;
+            max-width: 800px;
+            margin: 40px auto;
+            padding: 20px;
+        }
+        img {
+            max-width: 100%;
+            height: auto;
+        }
+    </style>
+</head>
+<body>
+    <h1>${title}</h1>
+    <p><small>Path: ${folderPath.join(' > ')}</small></p>
+    ${body}
+</body>
+</html>`;
+                        
+                        // Write to file
+                        console.log(`Writing to file: ${filePath}`);
+                        const NSString = $.NSString.stringWithString(content);
+                        NSString.writeToFileAtomicallyEncodingError(
+                            $(filePath),
+                            true,
+                            $.NSUTF8StringEncoding,
+                            null
+                        );
+                        exportedCount++;
+                        console.log(`Exported note: ${title}`);
+                    } catch (error) {
+                        console.log(`Error processing note: ${error}`);
+                    }
+                }
+            } catch (error) {
+                console.log(`Error processing folder: ${error}`);
+            }
+        }
+
+        console.log(`Export complete. ${exportedCount} notes exported.`);
+        return `${exportedCount}/${totalNotes}`;
+    } catch (error) {
+        console.log(`Fatal error: ${error}`);
+        return '0/0';
+    }
+} 
