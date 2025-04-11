@@ -2,12 +2,20 @@ document.addEventListener('DOMContentLoaded', () => {
     const exportButton = document.getElementById('exportButton');
     const resultDiv = document.getElementById('result');
     const progressText = document.getElementById('progressText');
+    let totalNotes = 0;
+    let isExporting = false;
 
     exportButton.addEventListener('click', async () => {
+        if (isExporting) {
+            return;
+        }
+
         try {
-            resultDiv.textContent = 'Starting process...';
+            isExporting = true;
+            resultDiv.textContent = 'Starting export process...';
             exportButton.disabled = true;
             progressText.textContent = '';
+            totalNotes = 0;
             
             const result = await window.electron.exportNotes();
             
@@ -17,11 +25,18 @@ document.addEventListener('DOMContentLoaded', () => {
             resultDiv.textContent = `Error: ${error.message}`;
             resultDiv.style.color = 'red';
         } finally {
+            isExporting = false;
             exportButton.disabled = false;
         }
     });
 
     window.electron.onExportProgress((data) => {
-        progressText.textContent = `Processing note ${data.notesProcessed} of ${data.totalNotes} (${data.progress}%)`;
+        if (data.totalNotes !== undefined) {
+            totalNotes = data.totalNotes;
+        }
+        if (data.notesProcessed !== undefined) {
+            const percent = totalNotes > 0 ? Math.round((data.notesProcessed / totalNotes) * 100) : 0;
+            progressText.textContent = `Processing note ${data.notesProcessed} of ${totalNotes} (${percent}%)`;
+        }
     });
 }); 

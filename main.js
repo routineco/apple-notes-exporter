@@ -3,6 +3,7 @@ const path = require('path');
 const { spawn } = require('child_process');
 
 let mainWindow;
+let isExporting = false;
 
 function createWindow() {
     mainWindow = new BrowserWindow({
@@ -20,12 +21,12 @@ function createWindow() {
 
 app.whenReady().then(() => {
     createWindow();
+});
 
-    app.on('activate', () => {
-        if (BrowserWindow.getAllWindows().length === 0) {
-            createWindow();
-        }
-    });
+app.on('activate', () => {
+    if (BrowserWindow.getAllWindows().length === 0) {
+        createWindow();
+    }
 });
 
 app.on('window-all-closed', () => {
@@ -36,59 +37,84 @@ app.on('window-all-closed', () => {
 
 // Handle export request
 ipcMain.handle('export-notes', async () => {
-    return new Promise((resolve, reject) => {
-        const scriptPath = path.join(__dirname, 'export_notes.jxa');
-        const osascript = spawn('osascript', ['-l', 'JavaScript', scriptPath]);
+    // Prevent multiple simultaneous exports
+    if (isExporting) {
+        return {
+            success: false,
+            message: 'Export already in progress'
+        };
+    }
 
-        let totalNotes = 0;
-        let currentNote = 0;
-        let errorOutput = '';
+    isExporting = true;
 
-        osascript.stdout.on('data', (data) => {
-            const lines = data.toString().split('\n');
-            for (const line of lines) {
-                if (line.startsWith('PROGRESS:')) {
-                    const [_, progress, title] = line.split(':');
-                    const [current, total] = progress.split('/').map(Number);
-                    
-                    if (!totalNotes) totalNotes = total;
-                    currentNote = current;
-                    
-                    mainWindow.webContents.send('export-progress', {
-                        progress: Math.round((current / total) * 100),
-                        notesProcessed: current,
-                        totalNotes: total,
-                        currentNote: title
+    try {
+        return await new Promise((resolve, reject) => {
+            const scriptPath = path.join(__dirname, 'export_notes.jxa');
+            const osascript = spawn('osascript', ['-l', 'JavaScript', scriptPath]);
+
+            let totalNotes = 0;
+            let errorOutput = '';
+
+            osascript.stdout.on('data', (data) => {
+                const lines = data.toString().split('\n');
+                for (const line of lines) {
+                    if (line.startsWith('PROGRESS:')) {
+                        const [_, current, title] = line.split(':');
+                        const currentNote = parseInt(current);
+                        
+                        mainWindow.webContents.send('export-progress', {
+                            progress: currentNote,
+                            notesProcessed: currentNote,
+                            currentNote: title
+                        });
+                    } else if (line.startsWith('Found ')) {
+                        const match = line.match(/Found (\d+) notes/);
+                        if (match) {
+                            const count = parseInt(match[1]);
+                            totalNotes += count;
+                            mainWindow.webContents.send('export-progress', {
+                                totalNotes: totalNotes
+                            });
+                        }
+                    }
+                    console.log('Script output:', line);
+                }
+            });
+
+            osascript.stderr.on('data', (data) => {
+                const line = data.toString();
+                // Only log actual errors, not the "Script error:" prefix
+                if (!line.startsWith('Script error:')) {
+                    errorOutput += line;
+                    console.error('Script error:', line);
+                }
+            });
+
+            osascript.on('close', (code) => {
+                isExporting = false;
+                if (code === 0 && !errorOutput) {
+                    resolve({
+                        success: true,
+                        message: `Successfully exported ${totalNotes} notes to Documents/ExportedNotes`
+                    });
+                } else {
+                    resolve({
+                        success: false,
+                        message: errorOutput || 'Export failed. Please make sure Notes app is closed.'
                     });
                 }
-                console.log('Script output:', line);
-            }
-        });
+            });
 
-        osascript.stderr.on('data', (data) => {
-            errorOutput += data.toString();
-            console.error('Script error:', data.toString());
-        });
-
-        osascript.on('close', (code) => {
-            if (code === 0 && !errorOutput) {
-                resolve({
-                    success: true,
-                    message: `Successfully exported ${currentNote} of ${totalNotes} notes to Documents/ExportedNotes`
-                });
-            } else {
-                resolve({
+            osascript.on('error', (error) => {
+                isExporting = false;
+                reject({
                     success: false,
-                    message: errorOutput || 'Export failed. Please make sure Notes app is closed.'
+                    message: `Failed to start export: ${error.message}`
                 });
-            }
-        });
-
-        osascript.on('error', (error) => {
-            reject({
-                success: false,
-                message: `Failed to start export: ${error.message}`
             });
         });
-    });
+    } catch (error) {
+        isExporting = false;
+        throw error;
+    }
 }); 
