@@ -9,6 +9,11 @@
             max-width: 600px;
             margin: 0 auto;
         }
+        .button-container {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 20px;
+        }
         button {
             padding: 10px 20px;
             font-size: 14px;
@@ -29,12 +34,26 @@
         #result {
             margin-top: 10px;
         }
+        #notesHierarchy {
+            margin-top: 20px;
+            padding: 15px;
+            background-color: #f5f5f5;
+            border-radius: 5px;
+            font-family: monospace;
+            white-space: pre;
+            max-height: 400px;
+            overflow-y: auto;
+        }
     </style>
 </head>
 <body>
     <h1>Apple Notes Importer</h1>
-    <button id="exportButton">Process Notes</button>
+    <div class="button-container">
+        <button id="chooseButton">Choose Notes</button>
+        <button id="exportButton">Process Notes</button>
+    </div>
     <div id="progressText"></div>
+    <div id="notesHierarchy"></div>
     <div id="result"></div>
     <script src="script.js"></script>
 </body>

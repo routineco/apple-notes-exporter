@@ -4,6 +4,7 @@ const { contextBridge, ipcRenderer } = require('electron');
 let progressCallback = null;
 
 contextBridge.exposeInMainWorld('electron', {
+    listNotes: () => ipcRenderer.invoke('list-notes'),
     exportNotes: () => ipcRenderer.invoke('export-notes'),
     onExportProgress: (callback) => {
         // Remove previous listener if it exists

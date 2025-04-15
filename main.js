@@ -35,14 +35,49 @@ app.on('window-all-closed', () => {
     }
 });
 
+// Handle list notes request
+ipcMain.handle('list-notes', async () => {
+    try {
+        return await new Promise((resolve, reject) => {
+            const scriptPath = path.join(__dirname, 'list_notes.jxa');
+            const osascript = spawn('osascript', ['-l', 'JavaScript', scriptPath]);
+
+            let output = '';
+            let errorOutput = '';
+
+            osascript.stdout.on('data', (data) => {
+                output += data.toString();
+            });
+
+            osascript.stderr.on('data', (data) => {
+                const line = data.toString();
+                if (!line.startsWith('Script error:')) {
+                    errorOutput += line;
+                    console.error('Script error:', line);
+                }
+            });
+
+            osascript.on('close', (code) => {
+                if (code === 0 && !errorOutput) {
+                    resolve(output);
+                } else {
+                    reject(new Error(errorOutput || 'Failed to list notes'));
+                }
+            });
+
+            osascript.on('error', (error) => {
+                reject(new Error(`Failed to start script: ${error.message}`));
+            });
+        });
+    } catch (error) {
+        throw error;
+    }
+});
+
 // Handle export request
 ipcMain.handle('export-notes', async () => {
-    // Prevent multiple simultaneous exports
     if (isExporting) {
-        return {
-            success: false,
-            message: 'Export already in progress'
-        };
+        throw new Error('Export already in progress');
     }
 
     isExporting = true;
@@ -83,7 +118,6 @@ ipcMain.handle('export-notes', async () => {
 
             osascript.stderr.on('data', (data) => {
                 const line = data.toString();
-                // Only log actual errors, not the "Script error:" prefix
                 if (!line.startsWith('Script error:')) {
                     errorOutput += line;
                     console.error('Script error:', line);
@@ -93,24 +127,15 @@ ipcMain.handle('export-notes', async () => {
             osascript.on('close', (code) => {
                 isExporting = false;
                 if (code === 0 && !errorOutput) {
-                    resolve({
-                        success: true,
-                        message: `Successfully exported ${totalNotes} notes to Documents/ExportedNotes`
-                    });
+                    resolve(totalNotes.toString());
                 } else {
-                    resolve({
-                        success: false,
-                        message: errorOutput || 'Export failed. Please make sure Notes app is closed.'
-                    });
+                    reject(new Error(errorOutput || 'Export failed. Please make sure Notes app is closed.'));
                 }
             });
 
             osascript.on('error', (error) => {
                 isExporting = false;
-                reject({
-                    success: false,
-                    message: `Failed to start export: ${error.message}`
-                });
+                reject(new Error(`Failed to start export: ${error.message}`));
             });
         });
     } catch (error) {

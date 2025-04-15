@@ -1,42 +1,59 @@
 document.addEventListener('DOMContentLoaded', () => {
+    const chooseButton = document.getElementById('chooseButton');
     const exportButton = document.getElementById('exportButton');
-    const resultDiv = document.getElementById('result');
     const progressText = document.getElementById('progressText');
-    let totalNotes = 0;
-    let isExporting = false;
+    const result = document.getElementById('result');
+    const notesHierarchy = document.getElementById('notesHierarchy');
 
-    exportButton.addEventListener('click', async () => {
-        if (isExporting) {
-            return;
+    function formatHierarchy(hierarchy, indent = '') {
+        let result = '';
+        for (const item of hierarchy) {
+            if (item.type === 'note') {
+                result += `${indent}${item.name}\n`;
+            } else {
+                result += `${indent}${item.name}/\n`;
+                if (item.children && item.children.length > 0) {
+                    result += formatHierarchy(item.children, indent + '  ');
+                }
+            }
         }
+        return result;
+    }
 
+    chooseButton.addEventListener('click', async () => {
         try {
-            isExporting = true;
-            resultDiv.textContent = 'Starting export process...';
-            exportButton.disabled = true;
-            progressText.textContent = '';
-            totalNotes = 0;
+            progressText.textContent = 'Fetching notes hierarchy...';
+            const hierarchyJson = await window.electron.listNotes();
+            const parsed = JSON.parse(hierarchyJson);
             
-            const result = await window.electron.exportNotes();
+            if (parsed.error) {
+                throw new Error(parsed.error);
+            }
             
-            resultDiv.textContent = result.message;
-            resultDiv.style.color = result.success ? 'green' : 'red';
+            notesHierarchy.textContent = formatHierarchy(parsed);
+            progressText.textContent = 'Notes hierarchy loaded successfully';
         } catch (error) {
-            resultDiv.textContent = `Error: ${error.message}`;
-            resultDiv.style.color = 'red';
-        } finally {
-            isExporting = false;
-            exportButton.disabled = false;
+            progressText.textContent = `Error: ${error.message}`;
+            notesHierarchy.textContent = '';
         }
     });
 
-    window.electron.onExportProgress((data) => {
-        if (data.totalNotes !== undefined) {
-            totalNotes = data.totalNotes;
+    exportButton.addEventListener('click', async () => {
+        try {
+            progressText.textContent = 'Starting export process...';
+            const resultText = await window.electron.exportNotes();
+            result.textContent = `Export complete. ${resultText} notes exported.`;
+            progressText.textContent = '';
+        } catch (error) {
+            progressText.textContent = `Error: ${error.message}`;
+            result.textContent = '';
         }
-        if (data.notesProcessed !== undefined) {
-            const percent = totalNotes > 0 ? Math.round((data.notesProcessed / totalNotes) * 100) : 0;
-            progressText.textContent = `Processing note ${data.notesProcessed} of ${totalNotes} (${percent}%)`;
+    });
+
+    // Listen for export progress updates
+    window.electron.onExportProgress((data) => {
+        if (data.currentNote) {
+            progressText.textContent = `Processing: ${data.currentNote}`;
         }
     });
 }); 
