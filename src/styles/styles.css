@@ -79,4 +79,75 @@ h2 {
 
 #sqliteFilesList li:last-child {
     border-bottom: none;
+}
+
+.hierarchy-item {
+    display: flex;
+    align-items: center;
+    padding: 4px 0;
+}
+
+.triangle-container {
+    width: 20px;
+    height: 20px;
+    margin-right: 8px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+}
+
+input[type="checkbox"] {
+    margin-right: 8px;
+    flex-shrink: 0;
+    width: 13px;
+    height: 13px;
+}
+
+.folder-name {
+    flex-grow: 1;
+}
+
+.triangle {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    transition: transform 0.2s ease;
+    border-radius: 3px;
+    color: #666;
+    width: 20px;
+    height: 20px;
+}
+
+.triangle:hover {
+    background-color: #e8e8e8;
+}
+
+.triangle svg {
+    width: 10px;
+    height: 10px;
+    transition: transform 0.2s ease;
+}
+
+.triangle.expanded svg {
+    transform: rotate(90deg);
+}
+
+.children {
+    margin-left: 28px;
+}
+
+.note-container {
+    margin-left: 20px;
+}
+
+.account-container, .folder-container {
+    margin: 4px 0;
+}
+
+.size-info {
+    color: #666;
+    margin-left: 8px;
+    font-size: 0.9em;
 } 

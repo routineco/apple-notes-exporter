@@ -1,0 +1,43 @@
+.platforms {
+  margin-top: 16px;
+  font-size: 13px;
+  color: var(--grey-50--light);
+  letter-spacing: -0.2px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin: auto;
+  margin-top: 16px;
+
+  .list {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+
+    .item {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      
+      img {
+        width: 16px;
+        height: 16px;
+        margin-right: 4px;
+        
+        &.windows {
+          margin-right: 6px;
+        }
+      }
+
+      &.android img {
+        width: 14px;
+        height: 16px;
+      }
+
+      span {
+        color: var(--text-secondary);
+      }
+    }
+  }
+} 

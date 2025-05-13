@@ -1,0 +1,1231 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <title>Apple Notes Exporter</title>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+            margin: 0;
+            padding: 0;
+            display: flex;
+            flex-direction: column;
+            min-height: 100vh;
+            background-color: #f5f5f7;
+        }
+
+        a {
+            color: #7d87e5;
+            text-decoration: none;
+            transition: opacity 0.2s ease;
+        }
+
+        a:hover {
+            opacity: 0.8;
+        }
+
+        .screen {
+            display: none;
+            flex: 1;
+            padding: 40px;
+            max-width: 800px;
+            margin: 0 auto;
+            width: 100%;
+            box-sizing: border-box;
+            min-height: 100vh;
+        }
+
+        .screen.active {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+
+        #welcome-screen {
+            text-align: center;
+            justify-content: center;
+        }
+
+        #scan-screen {
+            justify-content: flex-start;
+            padding-top: 40px;
+            position: relative;
+            text-align: center;
+        }
+
+        #scan-screen .screen-content {
+            position: relative;
+            margin-top: 40px;
+            width: auto;
+        }
+
+        .screen-header {
+            text-align: center;
+            margin-bottom: 20px;
+        }
+
+        h1 {
+            font-size: 2.5em;
+            color: #1d1d1f;
+            margin: 0 0 10px 0;
+        }
+
+        .subtitle {
+            font-size: 1.2em;
+            color: #515154;
+            margin: 0;
+        }
+
+        .screen-content {
+            width: 100%;
+            margin-top: 20px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+
+        .notes-counter {
+            margin: 0 0 8px 0;
+            color: #666;
+            font-size: 0.9em;
+            align-self: flex-start;
+        }
+
+        .logo-container {
+            margin-bottom: 30px;
+        }
+
+        .logo {
+            width: 200px;
+            height: auto;
+        }
+
+        .powered-by {
+            margin: 20px 0;
+            font-size: 1.1em;
+            color: #515154;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+        }
+
+        .powered-by img {
+            width: 20px;
+            height: 20px;
+            vertical-align: middle;
+        }
+
+        .powered-by a {
+            color: #7d87e5;
+            text-decoration: none;
+            display: flex;
+            align-items: center;
+            gap: 4px;
+        }
+
+        .powered-by a:hover {
+            opacity: 0.8;
+        }
+
+        .start-button {
+            margin-top: 40px;
+            padding: 15px 40px;
+            font-size: 1.2em;
+            border-radius: 8px;
+            border: none;
+            background-color: #F96359;
+            color: white;
+            cursor: pointer;
+            transition: background-color 0.2s;
+        }
+
+        .start-button:hover {
+            background-color: #f74b40;
+        }
+
+        .scan-button {
+            padding: 15px 40px;
+            font-size: 1.2em;
+            border-radius: 8px;
+            border: none;
+            background-color: #F96359;
+            color: white;
+            cursor: pointer;
+            transition: background-color 0.2s;
+        }
+
+        .scan-button:hover {
+            background-color: #f74b40;
+        }
+
+        .scan-button:disabled {
+            background-color: #ccc;
+            cursor: not-allowed;
+        }
+
+        #progressText {
+            display: none;
+        }
+
+        #notesHierarchy {
+            padding: 20px;
+            background-color: white;
+            border-radius: 10px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            max-height: 500px;
+            overflow-y: auto;
+            width: 100%;
+            text-align: left;
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+            font-size: 14px;
+            line-height: 1.6;
+        }
+
+        .hierarchy-item {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            padding: 4px 0;
+            min-height: 24px;
+            line-height: 1;
+        }
+
+        .triangle {
+            width: 20px;
+            height: 20px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            flex-shrink: 0;
+            margin: 0;
+            padding: 0;
+        }
+
+        .triangle svg {
+            width: 10px;
+            height: 10px;
+            display: block;
+            margin: 0;
+            padding: 0;
+        }
+
+        input[type="checkbox"] {
+            width: 20px;
+            height: 20px;
+            margin: 0;
+            padding: 0;
+            flex-shrink: 0;
+            position: relative;
+            top: 0;
+            align-self: center;
+            -webkit-appearance: none;
+            -moz-appearance: none;
+            appearance: none;
+            border: none;
+            border-radius: 6px;
+            background-color: #FF7F6F;
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+
+        input[type="checkbox"]:not(:checked) {
+            background-color: white;
+            border: 2px solid #d2d2d7;
+        }
+
+        input[type="checkbox"]:checked::after {
+            content: '';
+            position: absolute;
+            left: 6px;
+            top: 4px;
+            width: 5px;
+            height: 8px;
+            border: solid white;
+            border-width: 0 2px 2px 0;
+            transform: rotate(45deg);
+        }
+
+        input[type="checkbox"]:hover:not(:checked) {
+            border-color: #FF7F6F;
+        }
+
+        input[type="checkbox"]:focus {
+            outline: none;
+            box-shadow: 0 0 0 2px rgba(255, 127, 111, 0.2);
+        }
+
+        .account, .folder-name, .note-content {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            line-height: 1;
+        }
+
+        .note-content {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .size-info {
+            color: #666;
+            font-size: 0.9em;
+            line-height: 1;
+        }
+
+        .folder-content {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            line-height: 1;
+        }
+
+        .account-container, .folder-container, .note-container {
+            width: 100%;
+        }
+
+        .account-content, .folder-content, .note-content {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .folder-container {
+            width: 100%;
+            position: relative;
+        }
+
+        .folder-container .children {
+            display: block;
+            transition: all 0.2s ease;
+        }
+
+        .folder-container .children.collapsed {
+            display: none;
+        }
+
+        .folder-content {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            min-height: 24px;
+        }
+
+        .folder-name {
+            color: #515154;
+            font-weight: 500;
+            user-select: none;
+        }
+
+        .note-container {
+            width: 100%;
+        }
+
+        .account-container > .children > .folder-container {
+            margin-left: 32px;  /* Increase indentation for root folders under accounts */
+        }
+
+        /* For empty folders (no checkbox), align with siblings */
+        .folder-container > .hierarchy-item:not(:has(input[type="checkbox"])) {
+            margin-left: 24px;  /* Align with other items that have checkboxes */
+        }
+
+        .account {
+            font-weight: bold;
+            color: #1d1d1f;
+            font-size: 1.2em;
+            display: flex;
+            align-items: center;
+            line-height: 1;
+            margin-top: 0;
+            margin-bottom: 0;
+            padding-top: 0;
+            padding-bottom: 0;
+        }
+
+        .folder {
+            color: #515154;
+            font-weight: 500;
+        }
+
+        .note-item {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            padding: 4px 0;
+        }
+
+        .note-item input[type="checkbox"] {
+            width: 16px;
+            height: 16px;
+        }
+
+        .next-button {
+            margin-top: 40px;
+            padding: 15px 40px;
+            font-size: 1.2em;
+            border-radius: 8px;
+            border: none;
+            background-color: #F96359;
+            color: white;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            align-self: center;
+        }
+
+        .next-button:disabled {
+            background-color: #ccc;
+            cursor: not-allowed;
+            opacity: 0.7;
+        }
+
+        .next-button:not(:disabled):hover {
+            background-color: #f74b40;
+        }
+
+        .config-section {
+            width: 100%;
+            max-width: 400px;
+            margin-bottom: 24px;
+        }
+
+        .config-section label {
+            display: block;
+            margin-bottom: 8px;
+            color: #1d1d1f;
+            font-weight: 500;
+        }
+
+        .config-select {
+            width: 100%;
+            padding: 10px;
+            padding-right: 32px; /* Space for arrow */
+            border: 1px solid #d2d2d7;
+            border-radius: 8px;
+            font-size: 1em;
+            background-color: white;
+            color: #1d1d1f;
+            cursor: pointer;
+            appearance: none;
+            background-image: url("data:image/svg+xml;charset=US-ASCII,%3Csvg%20width%3D%2214%22%20height%3D%228%22%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%3E%3Cpath%20d%3D%22M1%201l6%206%206-6%22%20stroke%3D%22%23666%22%20stroke-width%3D%222%22%20fill%3D%22none%22%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22%2F%3E%3C%2Fsvg%3E");
+            background-repeat: no-repeat;
+            background-position: right 12px center;
+            background-size: 12px;
+        }
+
+        .config-select:focus {
+            outline: none;
+            border-color: #0066cc;
+        }
+
+        .directory-input {
+            display: flex;
+            gap: 8px;
+            width: 100%;
+        }
+
+        .directory-input input {
+            flex: 1;
+            padding: 10px;
+            border: 1px solid #d2d2d7;
+            border-radius: 8px;
+            font-size: 1em;
+            background-color: #f5f5f7;
+            color: #1d1d1f;
+            cursor: not-allowed;
+        }
+
+        .secondary-button {
+            padding: 10px 16px;
+            font-size: 1em;
+            border-radius: 8px;
+            border: none;
+            background-color: #F96359;
+            color: white;
+            cursor: pointer;
+            transition: background-color 0.2s;
+        }
+
+        .secondary-button:hover {
+            background-color: #f74b40;
+        }
+
+        .error-message {
+            color: #ff3b30;
+            font-size: 0.9em;
+            margin-top: 4px;
+            min-height: 18px;
+        }
+
+        .selection-counter {
+            margin-top: 8px;
+            color: #666;
+            font-size: 0.9em;
+            text-align: center;
+        }
+
+        .progress-section {
+            width: 100%;
+            max-width: 500px;
+            margin: 40px 0;
+            position: relative;
+        }
+
+        .export-status {
+            margin-bottom: 8px;
+            color: #666;
+            font-size: 0.9em;
+            text-align: center;
+            word-break: break-word;
+        }
+
+        .progress-bar-container {
+            width: 100%;
+            height: 8px;
+            background-color: #e8e8ed;
+            border-radius: 4px;
+            overflow: hidden;
+            margin: 8px 0;
+        }
+
+        .progress-bar {
+            width: 0%;
+            height: 100%;
+            background-color: #F96359;
+            border-radius: 4px;
+            transition: width 0.3s ease;
+        }
+
+        .progress-count {
+            position: absolute;
+            right: 0;
+            top: 50%;
+            transform: translateY(-50%);
+            color: #666;
+            font-size: 0.9em;
+            margin-right: -50px;
+        }
+
+        .triangle.expandable svg {
+            transition: transform 0.2s ease;
+        }
+
+        .triangle.expanded svg {
+            transform: rotate(90deg);
+        }
+
+        .triangle:not(.expandable) {
+            cursor: default;
+        }
+
+        .account-container {
+            margin-bottom: 16px;
+        }
+
+        .account-container > .children {
+            margin-left: 20px;
+        }
+
+        #export-logs {
+            margin-top: 20px;
+            width: 100%;
+            transition: transform 0.5s ease-out, opacity 0.5s ease-out;
+        }
+
+        #export-logs.sliding-away {
+            transform: translateX(-100%);
+            opacity: 0;
+        }
+
+        .log-container {
+            background-color: #f5f5f5;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            height: 200px;
+            overflow-y: auto;
+            padding: 10px;
+            font-family: monospace;
+            font-size: 12px;
+        }
+
+        #log-content {
+            white-space: pre-wrap;
+            word-wrap: break-word;
+        }
+
+        .log-entry {
+            margin: 4px 0;
+            padding: 2px 0;
+            border-bottom: 1px solid #eee;
+        }
+
+        .log-entry:last-child {
+            border-bottom: none;
+        }
+
+        .log-time {
+            color: #666;
+            margin-right: 8px;
+        }
+
+        .log-message {
+            color: #333;
+        }
+
+        .log-error {
+            color: #ff3b30;
+        }
+
+        .log-success {
+            color: #34c759;
+        }
+
+        /* Add new styles for the completion message */
+        .export-completion {
+            display: none;
+            flex-direction: column;
+            align-items: center;
+            text-align: center;
+            width: 100%;
+            opacity: 0;
+            transform: translateX(100%);
+            transition: transform 0.5s ease-out, opacity 0.5s ease-out;
+        }
+
+        .export-completion.visible {
+            display: flex;
+            opacity: 1;
+            transform: translateX(0);
+        }
+
+        .export-completion img {
+            max-width: 100%;
+            height: auto;
+            border-radius: 8px;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+            margin: 20px 0;
+        }
+
+        .export-completion h2 {
+            color: #1d1d1f;
+            font-size: 1.5em;
+            margin: 0 0 20px 0;
+        }
+
+        /* Add styles for the done screen */
+        .platform-icons {
+            display: flex;
+            align-items: center;
+            gap: 32px;
+            margin: 24px 0;
+            opacity: 0.5;
+        }
+
+        .platform-icon {
+            width: 24px;
+            height: 24px;
+        }
+
+        .done-message {
+            max-width: 600px;
+            text-align: center;
+            margin: 16px 0;
+            color: #515154;
+            font-size: 1.1em;
+            line-height: 1.6;
+        }
+
+        .done-message a {
+            color: #7d87e5;
+            text-decoration: none;
+            font-weight: 500;
+        }
+
+        .done-message a:hover {
+            opacity: 0.8;
+        }
+
+        .discover-title {
+            font-size: 1.4em;
+            color: #1d1d1f;
+            margin-bottom: 24px;
+            font-weight: 600;
+        }
+
+        .routine-screenshot {
+            max-width: 200%;
+            width: 1000px;
+            height: auto;
+            border-radius: 12px;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+            margin: 24px 0;
+        }
+
+        /* Loading Spinner */
+        .loading-container {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            gap: 24px;
+            margin-top: 150px;
+        }
+
+        .loading-spinner {
+            width: 40px;
+            height: 40px;
+            border: 3px solid rgba(249, 99, 89, 0.1);
+            border-radius: 50%;
+            border-top-color: #F96359;
+            animation: spin 1s ease-in-out infinite;
+            position: relative;
+        }
+
+        .loading-spinner::before {
+            content: '';
+            position: absolute;
+            top: -3px;
+            left: -3px;
+            right: -3px;
+            bottom: -3px;
+            border: 3px solid transparent;
+            border-top-color: rgba(249, 99, 89, 0.3);
+            border-radius: 50%;
+            animation: spin 2s linear infinite;
+        }
+
+        .loading-text {
+            color: #515154;
+            font-size: 1.1em;
+            animation: pulse 2s ease-in-out infinite;
+        }
+
+        @keyframes spin {
+            to {
+                transform: rotate(360deg);
+            }
+        }
+
+        @keyframes pulse {
+            0%, 100% {
+                opacity: 0.6;
+            }
+            50% {
+                opacity: 1;
+            }
+        }
+
+        .format-options {
+            display: flex;
+            gap: 24px;
+            margin-top: 8px;
+        }
+
+        .format-option {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            cursor: pointer;
+            user-select: none;
+            position: relative;
+            padding-left: 24px;
+        }
+
+        .format-option input[type="radio"] {
+            position: absolute;
+            opacity: 0;
+            width: 0;
+            height: 0;
+        }
+
+        .format-option .format-label {
+            color: #515154;
+            transition: color 0.2s ease;
+        }
+
+        .format-option .format-label::before {
+            content: '';
+            position: absolute;
+            left: 0;
+            top: 50%;
+            transform: translateY(-50%);
+            width: 16px;
+            height: 16px;
+            border: 2px solid #d2d2d7;
+            border-radius: 50%;
+            background-color: white;
+            transition: all 0.2s ease;
+        }
+
+        .format-option input[type="radio"]:checked + .format-label {
+            color: #1d1d1f;
+        }
+
+        .format-option input[type="radio"]:checked + .format-label::before {
+            border-color: #FF7F6F;
+            background-color: #FF7F6F;
+            box-shadow: inset 0 0 0 3px white;
+        }
+
+        .format-option:hover .format-label::before {
+            border-color: #FF7F6F;
+        }
+
+        .format-option input[type="radio"]:focus + .format-label::before {
+            box-shadow: 0 0 0 2px rgba(255, 127, 111, 0.2);
+        }
+
+        .format-option input[type="radio"]:checked:focus + .format-label::before {
+            box-shadow: 0 0 0 2px rgba(255, 127, 111, 0.2), inset 0 0 0 3px white;
+        }
+    </style>
+</head>
+<body>
+    <div id="welcome-screen" class="screen active">
+        <h1>Apple Notes Exporter</h1>
+        <div class="powered-by">
+            Powered by <a href="https://routine.co" target="_blank"><img src="assets/routine_symbol.svg" alt="Routine Logo">Routine</a>
+        </div>
+        <button class="start-button" onclick="showScreen('scan-screen')">Start</button>
+    </div>
+
+    <div id="scan-screen" class="screen">
+        <div class="screen-header">
+            <h1>Step 1</h1>
+            <div class="subtitle">Scan all your Apple Notes accounts, folders and notes</div>
+        </div>
+        <div class="screen-content">
+            <button id="scanButton" class="scan-button">Scan</button>
+            <div class="loading-container" style="display: none;">
+                <div class="loading-spinner"></div>
+                <div class="loading-text">Scanning notes...<br/><br/>This may take several minutes depending on the number of notes.</div>
+            </div>
+            <div id="progressText"></div>
+        </div>
+    </div>
+
+    <div id="select-screen" class="screen">
+        <div class="screen-header">
+            <h1>Step 2</h1>
+            <div class="subtitle">Select the notes you want to export</div>
+        </div>
+        <div class="screen-content">
+            <div id="notesCounter" class="notes-counter"></div>
+            <div id="notesHierarchy"></div>
+            <button id="nextButton" class="next-button" disabled>Next</button>
+            <div id="selectionCounter" class="selection-counter"></div>
+        </div>
+    </div>
+
+    <div id="configure-screen" class="screen">
+        <div class="screen-header">
+            <h1>Step 3</h1>
+            <div class="subtitle">Configure the export</div>
+        </div>
+        <div class="screen-content">
+            <div class="config-section">
+                <label for="format-select">Format</label>
+                <div class="format-options">
+                    <label class="format-option">
+                        <input type="radio" name="format" value="markdown" checked>
+                        <span class="format-label">Markdown</span>
+                    </label>
+                    <label class="format-option">
+                        <input type="radio" name="format" value="html">
+                        <span class="format-label">HTML</span>
+                    </label>
+                    <label class="format-option">
+                        <input type="radio" name="format" value="pdf">
+                        <span class="format-label">PDF</span>
+                    </label>
+                </div>
+            </div>
+            
+            <div class="config-section">
+                <label for="directory-select">Directory</label>
+                <div class="directory-input">
+                    <input type="text" id="directory-path" readonly>
+                    <button id="choose-directory" class="secondary-button">Choose</button>
+                </div>
+                <div id="directory-error" class="error-message"></div>
+            </div>
+
+            <button id="export-button" class="next-button" disabled>Export</button>
+        </div>
+    </div>
+
+    <div id="export-screen" class="screen">
+        <div class="screen-header">
+            <h1>Step 4</h1>
+            <div class="subtitle">Exporting & converting notes</div>
+        </div>
+        <div class="screen-content">
+            <div class="progress-section">
+                <div id="export-status" class="export-status"></div>
+                <div class="progress-bar-container">
+                    <div id="progress-bar" class="progress-bar"></div>
+                </div>
+                <div id="progress-count" class="progress-count">0/0</div>
+            </div>
+            <div id="export-logs">
+                <div class="log-container">
+                    <div id="log-content"></div>
+                </div>
+            </div>
+            <div class="export-completion">
+                <h2>Manage your notes in Routine's all-in-one productivity app</h2>
+                <img src="assets/agenda.png" alt="Routine App Screenshot" class="routine-screenshot">
+            </div>
+        </div>
+    </div>
+
+    <div id="done-screen" class="screen">
+        <div class="screen-header">
+            <h1>✅ Done</h1>
+            <div id="done-subtitle" class="subtitle">0 notes successfully exported</div>
+        </div>
+        <div class="screen-content">
+            <div class="done-message">
+                <a href="https://routine.co">Routine</a> is the all-in-one productivity app that allows million of people around the world to manage their notes, tasks, calendars, contacts, objectives, habits and more through a single beautiful app
+            </div>
+            <div class="platform-icons">
+                <img class="platform-icon" src="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 384 512'%3E%3Cpath d='M318.7 268.7c-.2-36.7 16.4-64.4 50-84.8-18.8-26.9-47.2-41.7-84.7-44.6-35.5-2.8-74.3 20.7-88.5 20.7-15 0-49.4-19.7-76.4-19.7C63.3 141.2 4 184.8 4 273.5q0 39.3 14.4 81.2c12.8 36.7 59 126.7 107.2 125.2 25.2-.6 43-17.9 75.8-17.9 31.8 0 48.3 17.9 76.4 17.9 48.6-.7 90.4-82.5 102.6-119.3-65.2-30.7-61.7-90-61.7-91.9zm-56.6-164.2c27.3-32.4 24.8-61.9 24-72.5-24.1 1.4-52 16.4-67.9 34.9-17.5 19.8-27.8 44.3-25.6 71.9 26.1 2 49.9-11.4 69.5-34.3z'/%3E%3C/svg%3E" alt="macOS">
+                <img class="platform-icon" src="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 448 512'%3E%3Cpath d='M0 93.7l183.6-25.3v177.4H0V93.7zm0 324.6l183.6 25.3V268.4H0v149.9zm203.8 28L448 480V268.4H203.8v177.9zm0-380.6v180.1H448V32L203.8 65.7z'/%3E%3C/svg%3E" alt="Windows">
+                <img class="platform-icon" src="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 512 512'%3E%3Cpath d='M352 256c0 22.2-1.2 43.6-3.3 64H163.3c-2.2-20.4-3.3-41.8-3.3-64s1.2-43.6 3.3-64H348.7c2.2 20.4 3.3 41.8 3.3 64zm28.8-64H503.9c5.3 20.5 8.1 41.9 8.1 64s-2.8 43.5-8.1 64H380.8c2.1-20.6 3.2-42 3.2-64s-1.1-43.4-3.2-64zm112.6-32H376.7c-10-63.9-29.8-117.4-55.3-151.6c78.3 20.7 142 77.5 171.9 151.6zm-149.1 0H167.7c6.1-36.4 15.5-68.6 27-94.7c10.5-23.6 22.2-40.7 33.5-51.5C239.4 3.2 248.7 0 256 0s16.6 3.2 27.8 13.8c11.3 10.8 23 27.9 33.5 51.5c11.6 26 20.9 58.2 27 94.7zm-209 0H18.6C48.6 85.9 112.2 29.1 190.6 8.4C165.1 42.6 145.3 96.1 135.3 160zM8.1 192H131.2c-2.1 20.6-3.2 42-3.2 64s1.1 43.4 3.2 64H8.1C2.8 299.5 0 278.1 0 256s2.8-43.5 8.1-64zM194.7 446.6c-11.6-26-20.9-58.2-27-94.6H344.3c-6.1 36.4-15.5 68.6-27 94.6c-10.5 23.6-22.2 40.7-33.5 51.5C272.6 508.8 263.3 512 256 512s-16.6-3.2-27.8-13.8c-11.3-10.8-23-27.9-33.5-51.5zM135.3 352c10 63.9 29.8 117.4 55.3 151.6C112.2 482.9 48.6 426.1 18.6 352H135.3zm358.1 0c-30 74.1-93.6 130.9-171.9 151.6c25.5-34.2 45.2-87.7 55.3-151.6H493.4z'/%3E%3C/svg%3E" alt="Web">
+                <img class="platform-icon" src="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 384 512'%3E%3Cpath d='M318.7 268.7c-.2-36.7 16.4-64.4 50-84.8-18.8-26.9-47.2-41.7-84.7-44.6-35.5-2.8-74.3 20.7-88.5 20.7-15 0-49.4-19.7-76.4-19.7C63.3 141.2 4 184.8 4 273.5q0 39.3 14.4 81.2c12.8 36.7 59 126.7 107.2 125.2 25.2-.6 43-17.9 75.8-17.9 31.8 0 48.3 17.9 76.4 17.9 48.6-.7 90.4-82.5 102.6-119.3-65.2-30.7-61.7-90-61.7-91.9zm-56.6-164.2c27.3-32.4 24.8-61.9 24-72.5-24.1 1.4-52 16.4-67.9 34.9-17.5 19.8-27.8 44.3-25.6 71.9 26.1 2 49.9-11.4 69.5-34.3z'/%3E%3C/svg%3E" alt="iOS">
+                <img class="platform-icon" src="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 576 512'%3E%3Cpath d='M420.55,301.93a24,24,0,1,1,24-24,24,24,0,0,1-24,24m-265.1,0a24,24,0,1,1,24-24,24,24,0,0,1-24,24m273.7-144.48,47.94-83a10,10,0,1,0-17.27-10h0l-48.54,84.07a301.25,301.25,0,0,0-246.56,0L116.18,64.45a10,10,0,1,0-17.27,10h0l47.94,83C64.53,202.22,8.24,285.55,0,384H576c-8.24-98.45-64.54-181.78-146.85-226.55'/%3E%3C/svg%3E" alt="Android">
+            </div>
+            <img src="assets/routine.png" alt="Routine App Screenshot" class="routine-screenshot">
+        </div>
+    </div>
+
+    <script>
+        function showScreen(screenId) {
+            // Hide all screens
+            document.querySelectorAll('.screen').forEach(screen => {
+                screen.classList.remove('active');
+            });
+            
+            // Show the requested screen
+            document.getElementById(screenId).classList.add('active');
+        }
+
+        // Add new function to handle scanning
+        function startScanning() {
+            const scanButton = document.getElementById('scanButton');
+            const loadingContainer = document.querySelector('.loading-container');
+            
+            // Disable the scan button
+            scanButton.disabled = true;
+            
+            // Show the loading spinner
+            loadingContainer.style.display = 'flex';
+            
+            // Start the scanning process
+            window.electron.startScan();
+        }
+
+        // Initialize event listeners when the document is loaded
+        document.addEventListener('DOMContentLoaded', () => {
+            // Add click handler for scan button
+            const scanButton = document.getElementById('scanButton');
+            if (scanButton) {
+                scanButton.addEventListener('click', startScanning);
+            }
+        });
+
+        function displayNotesHierarchy(data) {
+            console.group('displayNotesHierarchy');
+            console.log('Initial data:', JSON.stringify(data, null, 2));
+            
+            const notesHierarchyElement = document.getElementById('notesHierarchy');
+            const notesCounterElement = document.getElementById('notesCounter');
+            notesHierarchyElement.innerHTML = '';
+            
+            if (!data || !data.accounts || !Array.isArray(data.accounts)) {
+                console.error('Invalid data format:', data);
+                notesHierarchyElement.textContent = 'Error: Invalid data format';
+                console.groupEnd();
+                return;
+            }
+
+            const accounts = data.accounts;
+            if (accounts.length === 0) {
+                console.log('No accounts found');
+                notesHierarchyElement.textContent = 'No notes found';
+                console.groupEnd();
+                return;
+            }
+            
+            // Reset global hierarchy
+            notesHierarchy = [];
+            
+            // Count total notes recursively through all folders and subfolders
+            function countNotesInFolder(folder) {
+                let count = folder.notes ? folder.notes.length : 0;
+                if (folder.subfolders) {
+                    folder.subfolders.forEach(subfolder => {
+                        count += countNotesInFolder(subfolder);
+                    });
+                }
+                return count;
+            }
+            
+            // Count total notes across all accounts and their folders
+            let totalNotes = 0;
+            accounts.forEach(account => {
+                account.folders.forEach(folder => {
+                    totalNotes += countNotesInFolder(folder);
+                });
+            });
+            
+            console.log(`Total notes found: ${totalNotes}`);
+            notesCounterElement.textContent = `${totalNotes} note${totalNotes !== 1 ? 's' : ''} found`;
+            console.groupEnd();
+        }
+
+        function renderNotesHierarchy(data) {
+            console.group('renderNotesHierarchy');
+            console.log('Initial data structure:', JSON.stringify(data, null, 2));
+            
+            const container = document.getElementById('notesHierarchy');
+            const notesCounterElement = document.getElementById('notesCounter');
+            container.innerHTML = '';
+
+            if (!data || !data.accounts || !Array.isArray(data.accounts)) {
+                console.error('Invalid data format:', data);
+                container.textContent = 'Error: Invalid data format';
+                console.groupEnd();
+                return;
+            }
+
+            const accounts = data.accounts;
+            if (accounts.length === 0) {
+                console.log('No accounts found');
+                container.textContent = 'No notes found';
+                console.groupEnd();
+                return;
+            }
+
+            // Count all notes in the JSON data
+            let totalNotes = 0;
+            const notes = [];
+
+            // Parse the JSON and collect all notes
+            data.accounts.forEach(account => {
+                account.folders.forEach(folder => {
+                    // Add notes from the current folder
+                    if (folder.notes) {
+                        notes.push(...folder.notes);
+                        totalNotes += folder.notes.length;
+                    }
+
+                    // Add notes from Engineering folder if it exists
+                    if (folder.subfolders) {
+                        folder.subfolders.forEach(subfolder => {
+                            if (subfolder.notes) {
+                                notes.push(...subfolder.notes);
+                                totalNotes += subfolder.notes.length;
+                            }
+                            // Add notes from Subengineering folder if it exists
+                            if (subfolder.subfolders) {
+                                subfolder.subfolders.forEach(subsubfolder => {
+                                    if (subsubfolder.notes) {
+                                        notes.push(...subsubfolder.notes);
+                                        totalNotes += subsubfolder.notes.length;
+                                    }
+                                });
+                            }
+                        });
+                    }
+                });
+            });
+            
+            console.log('All notes:', notes);
+            console.log(`Total notes found: ${totalNotes}`);
+            notesCounterElement.textContent = `${totalNotes} note${totalNotes !== 1 ? 's' : ''} found`;
+            
+            let html = '';
+
+            accounts.forEach((account, accountIndex) => {
+                console.group(`Account ${accountIndex}: ${account.name}`);
+                console.log('Account data:', JSON.stringify(account, null, 2));
+                
+                html += `
+                    <div class="account-container" data-account="${account.name}">
+                        <div class="hierarchy-item">
+                            <div class="triangle expandable expanded" onclick="toggleFolder(this)">
+                                <svg viewBox="0 0 6 10" fill="none" xmlns="http://www.w3.org/2000/svg">
+                                    <path d="M1 1L5 5L1 9" stroke="#666" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+                                </svg>
+                            </div>
+                            <input type="checkbox" onchange="toggleFolderSelection(this)">
+                            <span class="account">${account.name}</span>
+                        </div>
+                        <div class="children">`;
+                
+                console.log(`Processing ${account.folders.length} folders for account ${account.name}`);
+                account.folders.forEach((folder, folderIndex) => {
+                    console.group(`Folder ${folderIndex}: ${folder.name}`);
+                    console.log('Folder data:', JSON.stringify(folder, null, 2));
+                    html += createFolderHierarchy(folder, 1, `${account.name}/`);
+                    console.groupEnd();
+                });
+
+                html += `
+                        </div>
+                    </div>`;
+                console.groupEnd();
+            });
+
+            console.log('Final HTML structure:', html);
+            container.innerHTML = html;
+            
+            // Log the actual DOM structure after rendering
+            console.log('Rendered DOM structure:', container.innerHTML);
+            logFolderStructure(container);
+            console.groupEnd();
+        }
+
+        function createFolderHierarchy(folder, level = 0, parentPath = '') {
+            console.group(`createFolderHierarchy: ${folder.name} (level ${level})`);
+            const currentPath = parentPath + folder.name + '/';
+            console.log({
+                folderName: folder.name,
+                level: level,
+                parentPath: parentPath,
+                currentPath: currentPath,
+                hasSubfolders: folder.subfolders?.length || 0,
+                hasNotes: folder.notes?.length || 0,
+                folderData: folder
+            });
+
+            let html = `
+                <div class="folder-container" data-folder-path="${currentPath}" data-level="${level}">
+                    <div class="hierarchy-item">
+                        <div class="triangle ${(folder.subfolders && folder.subfolders.length > 0) ? 'expandable expanded' : ''}" onclick="toggleFolder(this)">
+                            ${(folder.subfolders && folder.subfolders.length > 0) ? `
+                                <svg viewBox="0 0 6 10" fill="none" xmlns="http://www.w3.org/2000/svg">
+                                    <path d="M1 1L5 5L1 9" stroke="#666" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+                                </svg>
+                            ` : '<span style="width: 10px; display: inline-block;"></span>'}
+                        </div>
+                        <input type="checkbox" onchange="toggleFolderSelection(this)">
+                        <div class="folder-content">
+                            <span class="folder-name">${folder.name}</span>
+                        </div>
+                    </div>
+                    <div class="children" style="margin-left: ${level > 0 ? '20px' : '0'}">`;
+
+            if (folder.subfolders && folder.subfolders.length > 0) {
+                console.group(`Processing ${folder.subfolders.length} subfolders`);
+                folder.subfolders.forEach((subfolder, index) => {
+                    console.log(`Subfolder ${index}: ${subfolder.name}`);
+                    html += createFolderHierarchy(subfolder, level + 1, currentPath);
+                });
+                console.groupEnd();
+            }
+
+            if (folder.notes && folder.notes.length > 0) {
+                console.group(`Processing ${folder.notes.length} notes`);
+                folder.notes.forEach((note, index) => {
+                    console.log(`Note ${index}: ${note.name}`);
+                    const noteSize = formatSize(note.size);
+                    html += `
+                        <div class="note-container" data-parent-folder="${currentPath}">
+                            <div class="hierarchy-item">
+                                <span style="width: 20px; display: inline-block;"></span>
+                                <input type="checkbox" data-note-id="${note.name}" onchange="updateSelection()">
+                                <div class="note-content">
+                                    <span>${note.name}</span>
+                                    <span class="size-info">(${noteSize})</span>
+                                </div>
+                            </div>
+                        </div>`;
+                });
+                console.groupEnd();
+            }
+
+            html += `
+                    </div>
+                </div>`;
+
+            console.log('Generated HTML for folder:', html);
+            console.groupEnd();
+            return html;
+        }
+
+        function toggleFolder(triangle) {
+            console.group('toggleFolder');
+            if (!triangle.classList.contains('expandable')) {
+                console.log('Triangle is not expandable, returning');
+                console.groupEnd();
+                return;
+            }
+            
+            const folderContainer = triangle.closest('.folder-container, .account-container');
+            const folderName = folderContainer.querySelector('.folder-name, .account').textContent;
+            const children = folderContainer.querySelector('.children');
+            
+            console.log('Toggle details:', {
+                folderName: folderName,
+                containerType: folderContainer.classList.contains('account-container') ? 'account' : 'folder',
+                path: folderContainer.dataset.folderPath,
+                level: folderContainer.dataset.level,
+                currentlyExpanded: triangle.classList.contains('expanded'),
+                hasChildren: children.children.length
+            });
+            
+            triangle.classList.toggle('expanded');
+            children.classList.toggle('collapsed');
+            
+            console.log(`Folder "${folderName}" is now ${children.classList.contains('collapsed') ? 'collapsed' : 'expanded'}`);
+            console.groupEnd();
+        }
+
+        function toggleFolderSelection(checkbox) {
+            console.group('toggleFolderSelection');
+            const folderContainer = checkbox.closest('.folder-container, .account-container');
+            const folderName = folderContainer.querySelector('.folder-name, .account').textContent;
+            
+            console.log('Selection details:', {
+                folderName: folderName,
+                checked: checkbox.checked,
+                containerType: folderContainer.classList.contains('account-container') ? 'account' : 'folder',
+                path: folderContainer.dataset.folderPath
+            });
+            
+            const childCheckboxes = folderContainer.querySelectorAll('input[type="checkbox"]');
+            console.log(`Updating ${childCheckboxes.length} child checkboxes`);
+            
+            childCheckboxes.forEach(cb => {
+                cb.checked = checkbox.checked;
+            });
+            
+            updateSelection();
+            console.groupEnd();
+        }
+
+        function logFolderStructure(element, depth = 0) {
+            const prefix = '  '.repeat(depth);
+            const children = element.children;
+            
+            for (let child of children) {
+                if (child.classList.contains('folder-container')) {
+                    const folderName = child.querySelector('.folder-name').textContent;
+                    const path = child.dataset.folderPath;
+                    const level = child.dataset.level;
+                    console.log(`${prefix}Folder: ${folderName} (path: ${path}, level: ${level})`);
+                    logFolderStructure(child.querySelector('.children'), depth + 1);
+                } else if (child.classList.contains('note-container')) {
+                    const noteName = child.querySelector('.note-content span').textContent;
+                    const parentFolder = child.dataset.parentFolder;
+                    console.log(`${prefix}Note: ${noteName} (parent: ${parentFolder})`);
+                }
+            }
+        }
+    </script>
+    <script src="js/script.js"></script>
+</body>
+</html> 

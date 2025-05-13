@@ -5,7 +5,7 @@ let progressCallback = null;
 
 contextBridge.exposeInMainWorld('electron', {
     listNotes: () => ipcRenderer.invoke('list-notes'),
-    exportNotes: () => ipcRenderer.invoke('export-notes'),
+    exportNotes: (paths) => ipcRenderer.invoke('export-notes', paths),
     onExportProgress: (callback) => {
         // Remove previous listener if it exists
         if (progressCallback) {
@@ -14,5 +14,8 @@ contextBridge.exposeInMainWorld('electron', {
         // Register new listener
         progressCallback = (_, data) => callback(data);
         ipcRenderer.on('export-progress', progressCallback);
-    }
+    },
+    exportToMarkdown: (html, outputPath) => ipcRenderer.invoke('export-to-markdown', { html, outputPath }),
+    exportToRTF: (html, outputPath) => ipcRenderer.invoke('export-to-rtf', { html, outputPath }),
+    exportToPDF: (html, outputPath) => ipcRenderer.invoke('export-to-pdf', { html, outputPath }),
 }); 
