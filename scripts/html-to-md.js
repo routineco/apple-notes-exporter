@@ -2,7 +2,69 @@
 
 const fs = require('fs').promises;
 const path = require('path');
-const { convertToMarkdown } = require('../src/html-to-markdown');
+const { NodeHtmlMarkdown } = require('node-html-markdown');
+const { JSDOM } = require('jsdom');
+
+function convertToMarkdown(html, noteName) {
+    const nhm = new NodeHtmlMarkdown();
+    const images = [];
+    
+    console.log(`Converting HTML to Markdown for note: ${noteName}`);
+    console.log('HTML content length:', html.length);
+    
+    // Parse HTML with jsdom
+    const dom = new JSDOM(html);
+    const document = dom.window.document;
+    console.log('Document loaded with jsdom');
+    
+    // Find all images and process them before markdown conversion
+    const imgElements = document.querySelectorAll('img');
+    console.log(`Found ${imgElements.length} image elements in HTML`);
+    
+    imgElements.forEach((el, i) => {
+        const src = el.getAttribute('src');
+        if (!src) {
+            console.log(`Image ${i + 1}: No src attribute`);
+            return;
+        }
+        
+        console.log(`Processing image ${i + 1}/${imgElements.length}`);
+        console.log(`Image source starts with: ${src.substring(0, 50)}...`);
+        
+        if (src.startsWith('data:')) {
+            const matches = src.match(/^data:([A-Za-z-+\\/]+);base64,(.+)$/);
+            if (matches && matches.length === 3) {
+                const mimeType = matches[1];
+                const base64Data = matches[2];
+                
+                const extension = mimeType.split('/')[1];
+                const imageFileName = `image-${i + 1}.${extension}`;
+                
+                images.push({
+                    fileName: imageFileName,
+                    data: Buffer.from(base64Data, 'base64'),
+                    mimeType: mimeType
+                });
+                
+                // Update image source in HTML to reference the attachments folder
+                el.setAttribute('src', `${noteName}.attachments/${imageFileName}`);
+                console.log(`Processed image ${imageFileName}`);
+            }
+        }
+    });
+    
+    // Get the modified HTML with updated image sources
+    const modifiedHtml = dom.serialize();
+    
+    // Convert to Markdown
+    const markdown = nhm.translate(modifiedHtml);
+    
+    console.log('Conversion complete:');
+    console.log('\t- Markdown length:', markdown.length);
+    console.log('\t- Images extracted:', images.length);
+    
+    return { markdown, images };
+}
 
 async function convertFile(inputPath, outputPath) {
     try {
@@ -30,9 +92,9 @@ async function convertFile(inputPath, outputPath) {
             
             // Save all extracted images
             for (const image of images) {
-                const imagePath = path.join(attachmentsDir, image.filename);
+                const imagePath = path.join(attachmentsDir, image.fileName);
                 await fs.writeFile(imagePath, image.data);
-                console.log(`Saved attachment: ${image.filename}`);
+                console.log(`Saved attachment: ${image.fileName}`);
             }
             
             console.log(`Extracted ${images.length} image(s) to ${attachmentsDir}`);
@@ -42,7 +104,7 @@ async function convertFile(inputPath, outputPath) {
         return true;
     } catch (error) {
         console.error(`Error converting file:`, error);
-        throw error; // Propagate the error instead of returning false
+        throw error;
     }
 }
 
@@ -67,5 +129,6 @@ if (require.main === module) {
 }
 
 module.exports = {
-    convertFile
+    convertFile,
+    convertToMarkdown
 }; 

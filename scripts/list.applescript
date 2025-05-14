@@ -7,7 +7,7 @@ on run argv
     
     try
         tell application "Notes"
-            log "Starting Notes export..."
+            log "[info] starting scanning..."
             
             -- Initialize the JSON structure
             set jsonOutput to "{"
@@ -19,14 +19,14 @@ on run argv
                     return "{\"error\": \"No accounts found in Notes.\"}"
                 end if
                 
-                log "Found " & accountCount & " accounts"
+                log "[info] found account " & accountCount & " accounts"
                 
                 set accountIndex to 0
                 repeat with theAccount in accounts
                     set accountIndex to accountIndex + 1
                     try
                         set accountName to name of theAccount
-                        log "Processing account: " & accountName
+                        log "[info] scanning account " & accountName
                         
                         set jsonOutput to jsonOutput & "{"
                         set jsonOutput to jsonOutput & "\"name\": \"" & my escapeJSON(accountName) & "\","
@@ -35,18 +35,16 @@ on run argv
                         try
                             -- Get all folders first
                             set allFolders to folders of theAccount
-                            log "Total folders in account: " & (count of allFolders)
+                            log "[info] found " & (count of allFolders) & " root folders in account " & accountName
                             
                             -- Build a map of folder paths to folders
                             set folderMap to {}
                             repeat with theFolder in allFolders
                                 try
                                     set folderName to name of theFolder
-                                    log "Checking folder: " & folderName
                                     
                                     -- Get the folder's path
                                     set folderPath to my getFolderPath(theFolder)
-                                    log "Folder path: " & folderPath
                                     
                                     -- Add to map
                                     copy theFolder to end of folderMap
@@ -59,19 +57,16 @@ on run argv
                             repeat with i from 1 to count of folderMap by 2
                                 set theFolder to item i of folderMap
                                 set folderPath to item (i + 1) of folderMap
-                                
                                 set pathParts to my split(folderPath, "/")
                                 if (count of pathParts) is 2 then
                                     -- Only account name and folder name
-                                    log "Found root folder: " & name of theFolder
                                     set end of rootFolders to theFolder
                                             end if
                                         end repeat
                                     
                             -- Process root folders
                             set folderCount to count of rootFolders
-                            log "Found " & folderCount & " root folders"
-                                    
+
                             set folderIndex to 0
                             repeat with theFolder in rootFolders
                                 set folderIndex to folderIndex + 1
@@ -102,16 +97,16 @@ on run argv
                 set theFile to open for access outputPath with write permission
                 write jsonOutput to theFile starting at 0 as «class utf8»
                 close access theFile
-                return "Successfully wrote Notes hierarchy to " & outputPath
+                return "[info] saved JSON to " & outputPath
             on error errMsg
                 try
                     close access theFile
                 end try
-                return "{\"error\": \"Failed to write to file: " & my escapeJSON(errMsg) & "\"}"
+                return "[error] failed to write JSON file: " & my escapeJSON(errMsg)
             end try
         end tell
     on error errMsg
-        return "{\"error\": \"Failed to access Notes application: " & my escapeJSON(errMsg) & "\"}"
+        return "[error] failed to access Apple Notes application: " & my escapeJSON(errMsg)
     end try
 end run
 
@@ -143,7 +138,7 @@ on processFolderRecursively(theFolder, folderMap)
     tell application "Notes"
         set folderName to name of theFolder
         set currentPath to my getFolderPath(theFolder)
-        log "Processing folder recursively: " & folderName & " (path: " & currentPath & ")"
+        log "[info] scanning folder " & currentPath
         
         set jsonOutput to "{"
         set jsonOutput to jsonOutput & "\"name\": \"" & my escapeJSON(folderName) & "\","
@@ -172,16 +167,13 @@ on processFolderRecursively(theFolder, folderMap)
                     end repeat
                     
                     if isChild then
-                        log "Found child folder: " & name of potentialChild & " under " & folderName
                         set end of childFolders to potentialChild
                     end if
                 end if
             end repeat
             
             -- Process child folders
-            set childCount to count of childFolders
-            log "Found " & childCount & " child folders for: " & folderName
-            
+            set childCount to count of childFolders            
             set childIndex to 0
             repeat with childFolder in childFolders
                 set childIndex to childIndex + 1
@@ -197,7 +189,9 @@ on processFolderRecursively(theFolder, folderMap)
         set jsonOutput to jsonOutput & "\"notes\": ["
         try
             set folderNotes to notes of theFolder
-            log "Found " & (count of folderNotes) & " notes in folder: " & folderName
+            set folderPath to my getFolderPath(theFolder)
+
+            log "[info] found " & (count of folderNotes) & " notes in " & folderPath
             
             set noteIndex to 0
             repeat with theNote in folderNotes

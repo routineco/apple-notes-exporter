@@ -18,8 +18,9 @@ function createWindow() {
         width: 1200,
         height: 800,
         webPreferences: {
-            nodeIntegration: true,
-            contextIsolation: false
+            nodeIntegration: false,
+            contextIsolation: true,
+            preload: path.join(__dirname, 'preload.js')
         }
     });
 
@@ -61,6 +62,8 @@ ipcMain.handle('scan-notes', async () => {
 
             osascript.stderr.on('data', (data) => {
                 const output = data.toString();
+                // Emit the script output event
+                mainWindow.webContents.send('script-output', output);
                 // Only treat as error if it's not an informational log
                 if (!output.includes('Starting Notes export') && 
                     !output.includes('Found') && 
@@ -75,7 +78,9 @@ ipcMain.handle('scan-notes', async () => {
             });
 
             osascript.stdout.on('data', (data) => {
-                console.log('AppleScript output:', data.toString());
+                const output = data.toString();
+                mainWindow.webContents.send('script-output', output);
+                console.log('AppleScript output:', output);
             });
 
             osascript.on('close', async (code) => {

@@ -297,6 +297,7 @@
         }
 
         .folder-container .children {
+            padding-left: 32px;
             display: block;
             transition: all 0.2s ease;
         }
@@ -322,8 +323,12 @@
             width: 100%;
         }
 
-        .account-container > .children > .folder-container {
-            margin-left: 32px;  /* Increase indentation for root folders under accounts */
+        .account-container {
+            margin-bottom: 16px;
+        }
+
+        .account-container > .children {
+            padding-left: 32px;
         }
 
         /* For empty folders (no checkbox), align with siblings */
@@ -519,14 +524,6 @@
             cursor: default;
         }
 
-        .account-container {
-            margin-bottom: 16px;
-        }
-
-        .account-container > .children {
-            margin-left: 20px;
-        }
-
         #export-logs {
             margin-top: 20px;
             width: 100%;
@@ -539,46 +536,51 @@
         }
 
         .log-container {
-            background-color: #f5f5f5;
-            border: 1px solid #ddd;
-            border-radius: 4px;
-            height: 200px;
+            margin-top: 20px;
+            padding: 12px;
+            background-color: #f5f5f7;
+            border: 1px solid #d2d2d7;
+            border-radius: 8px;
+            width: 100%;
+            max-width: 600px;
+            max-height: 300px;
             overflow-y: auto;
-            padding: 10px;
             font-family: monospace;
             font-size: 12px;
+            color: #000000;
+            line-height: 1.4;
+            text-align: left;
+            overflow-anchor: none;
         }
 
-        #log-content {
+        #log-content, #scriptOutput {
+            display: flex;
+            flex-direction: column-reverse;
+            min-height: 100%;
+        }
+
+        .log-line, .log-entry {
+            margin: 4px 0;
             white-space: pre-wrap;
             word-wrap: break-word;
+            flex-shrink: 0;
         }
 
-        .log-entry {
-            margin: 4px 0;
-            padding: 2px 0;
-            border-bottom: 1px solid #eee;
+        .log-line.info, .log-entry .log-message {
+            color: #000000;
         }
 
-        .log-entry:last-child {
-            border-bottom: none;
-        }
-
-        .log-time {
-            color: #666;
-            margin-right: 8px;
-        }
-
-        .log-message {
-            color: #333;
-        }
-
-        .log-error {
+        .log-line.error, .log-entry .log-message.log-error {
             color: #ff3b30;
         }
 
-        .log-success {
+        .log-entry .log-message.log-success {
             color: #34c759;
+        }
+
+        .log-time {
+            color: #666666;
+            margin-right: 8px;
         }
 
         /* Add new styles for the completion message */
@@ -669,7 +671,7 @@
             align-items: center;
             justify-content: center;
             gap: 24px;
-            margin-top: 150px;
+            margin-top: 50px;
         }
 
         .loading-spinner {
@@ -779,6 +781,24 @@
         .format-option input[type="radio"]:checked:focus + .format-label::before {
             box-shadow: 0 0 0 2px rgba(255, 127, 111, 0.2), inset 0 0 0 3px white;
         }
+
+        .get-started-button {
+            margin-top: 0px;
+            padding: 12px 16px;
+            font-size: 15px;
+            font-weight: 500;
+            border-radius: 7px;
+            border: none;
+            background-color: #F96359;
+            color: white;
+            transition: background-color 0.2s;
+            transition: background .2s;
+            width: fit-content; 
+        }
+
+        .get-started-button:hover {
+            background-color: #f74b40;
+        }
     </style>
 </head>
 <body>
@@ -800,6 +820,7 @@
             <div class="loading-container" style="display: none;">
                 <div class="loading-spinner"></div>
                 <div class="loading-text">Scanning notes...<br/><br/>This may take several minutes depending on the number of notes.</div>
+                <div class="log-container" id="scriptOutput"></div>
             </div>
             <div id="progressText"></div>
         </div>
@@ -896,6 +917,7 @@
                 <img class="platform-icon" src="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 384 512'%3E%3Cpath d='M318.7 268.7c-.2-36.7 16.4-64.4 50-84.8-18.8-26.9-47.2-41.7-84.7-44.6-35.5-2.8-74.3 20.7-88.5 20.7-15 0-49.4-19.7-76.4-19.7C63.3 141.2 4 184.8 4 273.5q0 39.3 14.4 81.2c12.8 36.7 59 126.7 107.2 125.2 25.2-.6 43-17.9 75.8-17.9 31.8 0 48.3 17.9 76.4 17.9 48.6-.7 90.4-82.5 102.6-119.3-65.2-30.7-61.7-90-61.7-91.9zm-56.6-164.2c27.3-32.4 24.8-61.9 24-72.5-24.1 1.4-52 16.4-67.9 34.9-17.5 19.8-27.8 44.3-25.6 71.9 26.1 2 49.9-11.4 69.5-34.3z'/%3E%3C/svg%3E" alt="iOS">
                 <img class="platform-icon" src="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 576 512'%3E%3Cpath d='M420.55,301.93a24,24,0,1,1,24-24,24,24,0,0,1-24,24m-265.1,0a24,24,0,1,1,24-24,24,24,0,0,1-24,24m273.7-144.48,47.94-83a10,10,0,1,0-17.27-10h0l-48.54,84.07a301.25,301.25,0,0,0-246.56,0L116.18,64.45a10,10,0,1,0-17.27,10h0l47.94,83C64.53,202.22,8.24,285.55,0,384H576c-8.24-98.45-64.54-181.78-146.85-226.55'/%3E%3C/svg%3E" alt="Android">
             </div>
+            <a href="https://routine.co" target="_blank" class="get-started-button">Get started</a>
             <img src="assets/routine.png" alt="Routine App Screenshot" class="routine-screenshot">
         </div>
     </div>
@@ -911,10 +933,13 @@
             document.getElementById(screenId).classList.add('active');
         }
 
-        // Add new function to handle scanning
         function startScanning() {
             const scanButton = document.getElementById('scanButton');
             const loadingContainer = document.querySelector('.loading-container');
+            const scriptOutput = document.getElementById('scriptOutput');
+            
+            // Clear previous output
+            scriptOutput.innerHTML = '';
             
             // Disable the scan button
             scanButton.disabled = true;
@@ -923,17 +948,115 @@
             loadingContainer.style.display = 'flex';
             
             // Start the scanning process
-            window.electron.startScan();
+            window.electron.scan()
+                .then(result => {
+                    addLogLine('Scan completed successfully');
+                    console.log('Scan completed:', result);
+                    try {
+                        const data = JSON.parse(result);
+                        displayNotesHierarchy(data);
+                        showScreen('select-screen');
+                    } catch (error) {
+                        addLogLine('Error parsing scan results: ' + error.message, true);
+                        console.error('Failed to parse scan results:', error);
+                    }
+                })
+                .catch(error => {
+                    addLogLine('Scan failed: ' + error.message, true);
+                    console.error('Scan failed:', error);
+                })
+                .finally(() => {
+                    scanButton.disabled = false;
+                });
+        }
+
+        function addLogLine(text, isError = false) {
+            const scriptOutput = document.getElementById('scriptOutput');
+            const logLine = document.createElement('div');
+            logLine.className = 'log-line ' + (isError ? 'error' : 'info');
+            
+            const time = document.createElement('span');
+            time.className = 'log-time';
+            time.textContent = new Date().toLocaleTimeString();
+            
+            const msg = document.createElement('span');
+            msg.className = 'log-message';
+            msg.textContent = text;
+            
+            logLine.appendChild(time);
+            logLine.appendChild(msg);
+            scriptOutput.appendChild(logLine);
         }
 
         // Initialize event listeners when the document is loaded
         document.addEventListener('DOMContentLoaded', () => {
+            console.log('DOM loaded, setting up event listeners');
+            
             // Add click handler for scan button
             const scanButton = document.getElementById('scanButton');
             if (scanButton) {
                 scanButton.addEventListener('click', startScanning);
+                console.log('Scan button handler attached');
+            }
+
+            // Add click handler for next button
+            const nextButton = document.getElementById('nextButton');
+            if (nextButton) {
+                nextButton.addEventListener('click', () => {
+                    showScreen('configure-screen');
+                });
+            }
+
+            // Add script output handler
+            if (window.electron && window.electron.onScriptOutput) {
+                console.log('Setting up script output handler');
+                window.electron.onScriptOutput((output) => {
+                    console.log('Received script output:', output);
+                    addLogLine(output, output.includes('[error]'));
+                });
+            } else {
+                console.error('Electron API not properly initialized');
+            }
+
+            // Add directory chooser handler
+            const chooseDirectoryButton = document.getElementById('choose-directory');
+            if (chooseDirectoryButton) {
+                chooseDirectoryButton.addEventListener('click', async () => {
+                    try {
+                        const result = await window.electron.selectDirectory();
+                        if (!result || result.canceled) return;
+
+                        const directoryPath = result.filePaths[0];
+                        
+                        // Check if directory is empty
+                        const files = await window.electron.checkDirectory(directoryPath);
+                        const directoryPathInput = document.getElementById('directory-path');
+                        const directoryError = document.getElementById('directory-error');
+                        const exportButton = document.getElementById('export-button');
+
+                        if (files.length > 0) {
+                            directoryError.textContent = 'Directory must be empty';
+                            exportButton.disabled = true;
+                        } else {
+                            directoryPathInput.value = directoryPath;
+                            directoryError.textContent = '';
+                            // Only enable export if we have a valid directory
+                            exportButton.disabled = false;
+                        }
+                    } catch (error) {
+                        const directoryError = document.getElementById('directory-error');
+                        directoryError.textContent = `Error: ${error.message}`;
+                    }
+                });
             }
         });
+
+        function formatSize(size) {
+            if (size < 1024) return size + ' B';
+            if (size < 1024 * 1024) return (size / 1024).toFixed(1) + ' KB';
+            if (size < 1024 * 1024 * 1024) return (size / (1024 * 1024)).toFixed(1) + ' MB';
+            return (size / (1024 * 1024 * 1024)).toFixed(1) + ' GB';
+        }
 
         function displayNotesHierarchy(data) {
             console.group('displayNotesHierarchy');
@@ -958,9 +1081,6 @@
                 return;
             }
             
-            // Reset global hierarchy
-            notesHierarchy = [];
-            
             // Count total notes recursively through all folders and subfolders
             function countNotesInFolder(folder) {
                 let count = folder.notes ? folder.notes.length : 0;
@@ -982,75 +1102,10 @@
             
             console.log(`Total notes found: ${totalNotes}`);
             notesCounterElement.textContent = `${totalNotes} note${totalNotes !== 1 ? 's' : ''} found`;
-            console.groupEnd();
-        }
 
-        function renderNotesHierarchy(data) {
-            console.group('renderNotesHierarchy');
-            console.log('Initial data structure:', JSON.stringify(data, null, 2));
-            
-            const container = document.getElementById('notesHierarchy');
-            const notesCounterElement = document.getElementById('notesCounter');
-            container.innerHTML = '';
-
-            if (!data || !data.accounts || !Array.isArray(data.accounts)) {
-                console.error('Invalid data format:', data);
-                container.textContent = 'Error: Invalid data format';
-                console.groupEnd();
-                return;
-            }
-
-            const accounts = data.accounts;
-            if (accounts.length === 0) {
-                console.log('No accounts found');
-                container.textContent = 'No notes found';
-                console.groupEnd();
-                return;
-            }
-
-            // Count all notes in the JSON data
-            let totalNotes = 0;
-            const notes = [];
-
-            // Parse the JSON and collect all notes
-            data.accounts.forEach(account => {
-                account.folders.forEach(folder => {
-                    // Add notes from the current folder
-                    if (folder.notes) {
-                        notes.push(...folder.notes);
-                        totalNotes += folder.notes.length;
-                    }
-
-                    // Add notes from Engineering folder if it exists
-                    if (folder.subfolders) {
-                        folder.subfolders.forEach(subfolder => {
-                            if (subfolder.notes) {
-                                notes.push(...subfolder.notes);
-                                totalNotes += subfolder.notes.length;
-                            }
-                            // Add notes from Subengineering folder if it exists
-                            if (subfolder.subfolders) {
-                                subfolder.subfolders.forEach(subsubfolder => {
-                                    if (subsubfolder.notes) {
-                                        notes.push(...subsubfolder.notes);
-                                        totalNotes += subsubfolder.notes.length;
-                                    }
-                                });
-                            }
-                        });
-                    }
-                });
-            });
-            
-            console.log('All notes:', notes);
-            console.log(`Total notes found: ${totalNotes}`);
-            notesCounterElement.textContent = `${totalNotes} note${totalNotes !== 1 ? 's' : ''} found`;
-            
             let html = '';
-
             accounts.forEach((account, accountIndex) => {
                 console.group(`Account ${accountIndex}: ${account.name}`);
-                console.log('Account data:', JSON.stringify(account, null, 2));
                 
                 html += `
                     <div class="account-container" data-account="${account.name}">
@@ -1065,12 +1120,8 @@
                         </div>
                         <div class="children">`;
                 
-                console.log(`Processing ${account.folders.length} folders for account ${account.name}`);
-                account.folders.forEach((folder, folderIndex) => {
-                    console.group(`Folder ${folderIndex}: ${folder.name}`);
-                    console.log('Folder data:', JSON.stringify(folder, null, 2));
+                account.folders.forEach(folder => {
                     html += createFolderHierarchy(folder, 1, `${account.name}/`);
-                    console.groupEnd();
                 });
 
                 html += `
@@ -1079,33 +1130,27 @@
                 console.groupEnd();
             });
 
-            console.log('Final HTML structure:', html);
-            container.innerHTML = html;
+            notesHierarchyElement.innerHTML = html;
             
-            // Log the actual DOM structure after rendering
-            console.log('Rendered DOM structure:', container.innerHTML);
-            logFolderStructure(container);
+            // Enable the next button if we found notes
+            const nextButton = document.getElementById('nextButton');
+            if (nextButton) {
+                nextButton.disabled = totalNotes === 0;
+            }
+
             console.groupEnd();
         }
 
         function createFolderHierarchy(folder, level = 0, parentPath = '') {
-            console.group(`createFolderHierarchy: ${folder.name} (level ${level})`);
             const currentPath = parentPath + folder.name + '/';
-            console.log({
-                folderName: folder.name,
-                level: level,
-                parentPath: parentPath,
-                currentPath: currentPath,
-                hasSubfolders: folder.subfolders?.length || 0,
-                hasNotes: folder.notes?.length || 0,
-                folderData: folder
-            });
-
+            const hasContent = (folder.subfolders && folder.subfolders.length > 0) || (folder.notes && folder.notes.length > 0);
+            const isAccount = level === 0;
+            
             let html = `
                 <div class="folder-container" data-folder-path="${currentPath}" data-level="${level}">
                     <div class="hierarchy-item">
-                        <div class="triangle ${(folder.subfolders && folder.subfolders.length > 0) ? 'expandable expanded' : ''}" onclick="toggleFolder(this)">
-                            ${(folder.subfolders && folder.subfolders.length > 0) ? `
+                        <div class="triangle ${hasContent ? 'expandable' : ''} ${isAccount ? 'expanded' : ''}" onclick="toggleFolder(this)">
+                            ${hasContent ? `
                                 <svg viewBox="0 0 6 10" fill="none" xmlns="http://www.w3.org/2000/svg">
                                     <path d="M1 1L5 5L1 9" stroke="#666" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
                                 </svg>
@@ -1116,21 +1161,16 @@
                             <span class="folder-name">${folder.name}</span>
                         </div>
                     </div>
-                    <div class="children" style="margin-left: ${level > 0 ? '20px' : '0'}">`;
+                    <div class="children${!isAccount ? ' collapsed' : ''}">`;
 
             if (folder.subfolders && folder.subfolders.length > 0) {
-                console.group(`Processing ${folder.subfolders.length} subfolders`);
-                folder.subfolders.forEach((subfolder, index) => {
-                    console.log(`Subfolder ${index}: ${subfolder.name}`);
+                folder.subfolders.forEach(subfolder => {
                     html += createFolderHierarchy(subfolder, level + 1, currentPath);
                 });
-                console.groupEnd();
             }
 
             if (folder.notes && folder.notes.length > 0) {
-                console.group(`Processing ${folder.notes.length} notes`);
-                folder.notes.forEach((note, index) => {
-                    console.log(`Note ${index}: ${note.name}`);
+                folder.notes.forEach(note => {
                     const noteSize = formatSize(note.size);
                     html += `
                         <div class="note-container" data-parent-folder="${currentPath}">
@@ -1144,23 +1184,82 @@
                             </div>
                         </div>`;
                 });
-                console.groupEnd();
             }
 
             html += `
                     </div>
                 </div>`;
 
-            console.log('Generated HTML for folder:', html);
-            console.groupEnd();
             return html;
         }
 
+        function updateSelection() {
+            const selectedNotes = document.querySelectorAll('input[type="checkbox"][data-note-id]:checked');
+            const totalNotes = document.querySelectorAll('input[type="checkbox"][data-note-id]');
+            const nextButton = document.getElementById('nextButton');
+            const selectionCounter = document.getElementById('selectionCounter');
+            
+            const count = selectedNotes.length;
+            const total = totalNotes.length;
+            
+            if (selectionCounter) {
+                selectionCounter.textContent = `${count} of ${total} notes selected`;
+            }
+            
+            if (nextButton) {
+                nextButton.disabled = count === 0;
+            }
+
+            // Update parent folder checkboxes
+            const allCheckboxes = document.querySelectorAll('input[type="checkbox"]');
+            allCheckboxes.forEach(checkbox => {
+                if (checkbox.hasAttribute('data-note-id')) {
+                    let parent = checkbox.closest('.note-container');
+                    while (parent) {
+                        const folderContainer = parent.closest('.folder-container, .account-container');
+                        if (!folderContainer) break;
+                        
+                        const folderCheckbox = folderContainer.querySelector('.hierarchy-item input[type="checkbox"]');
+                        if (!folderCheckbox) break;
+                        
+                        const childCheckboxes = folderContainer.querySelectorAll('.note-container input[type="checkbox"]');
+                        const checkedCount = Array.from(childCheckboxes).filter(cb => cb.checked).length;
+                        
+                        folderCheckbox.checked = checkedCount === childCheckboxes.length;
+                        folderCheckbox.indeterminate = checkedCount > 0 && checkedCount < childCheckboxes.length;
+                        
+                        parent = folderContainer.parentElement;
+                    }
+                }
+            });
+        }
+
+        function toggleFolderSelection(checkbox) {
+            console.log('toggleFolderSelection');
+            const folderContainer = checkbox.closest('.folder-container, .account-container');
+            const folderName = folderContainer.querySelector('.folder-name, .account').textContent;
+            
+            console.log('Selection details:', {
+                folderName: folderName,
+                checked: checkbox.checked,
+                containerType: folderContainer.classList.contains('account-container') ? 'account' : 'folder',
+                path: folderContainer.dataset.folderPath
+            });
+            
+            const childCheckboxes = folderContainer.querySelectorAll('input[type="checkbox"]');
+            console.log(`Updating ${childCheckboxes.length} child checkboxes`);
+            
+            childCheckboxes.forEach(cb => {
+                cb.checked = checkbox.checked;
+            });
+            
+            updateSelection();
+        }
+
         function toggleFolder(triangle) {
-            console.group('toggleFolder');
+            console.log('toggleFolder');
             if (!triangle.classList.contains('expandable')) {
                 console.log('Triangle is not expandable, returning');
-                console.groupEnd();
                 return;
             }
             
@@ -1181,49 +1280,6 @@
             children.classList.toggle('collapsed');
             
             console.log(`Folder "${folderName}" is now ${children.classList.contains('collapsed') ? 'collapsed' : 'expanded'}`);
-            console.groupEnd();
-        }
-
-        function toggleFolderSelection(checkbox) {
-            console.group('toggleFolderSelection');
-            const folderContainer = checkbox.closest('.folder-container, .account-container');
-            const folderName = folderContainer.querySelector('.folder-name, .account').textContent;
-            
-            console.log('Selection details:', {
-                folderName: folderName,
-                checked: checkbox.checked,
-                containerType: folderContainer.classList.contains('account-container') ? 'account' : 'folder',
-                path: folderContainer.dataset.folderPath
-            });
-            
-            const childCheckboxes = folderContainer.querySelectorAll('input[type="checkbox"]');
-            console.log(`Updating ${childCheckboxes.length} child checkboxes`);
-            
-            childCheckboxes.forEach(cb => {
-                cb.checked = checkbox.checked;
-            });
-            
-            updateSelection();
-            console.groupEnd();
-        }
-
-        function logFolderStructure(element, depth = 0) {
-            const prefix = '  '.repeat(depth);
-            const children = element.children;
-            
-            for (let child of children) {
-                if (child.classList.contains('folder-container')) {
-                    const folderName = child.querySelector('.folder-name').textContent;
-                    const path = child.dataset.folderPath;
-                    const level = child.dataset.level;
-                    console.log(`${prefix}Folder: ${folderName} (path: ${path}, level: ${level})`);
-                    logFolderStructure(child.querySelector('.children'), depth + 1);
-                } else if (child.classList.contains('note-container')) {
-                    const noteName = child.querySelector('.note-content span').textContent;
-                    const parentFolder = child.dataset.parentFolder;
-                    console.log(`${prefix}Note: ${noteName} (parent: ${parentFolder})`);
-                }
-            }
         }
     </script>
     <script src="js/script.js"></script>

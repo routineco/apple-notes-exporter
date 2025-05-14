@@ -1,15 +1,11 @@
 // IPC renderer setup
-const { ipcRenderer } = require('electron');
-const path = require('path');
-const os = require('os');
-
 document.addEventListener('DOMContentLoaded', () => {
     // Handle external links
     document.addEventListener('click', (event) => {
         const link = event.target.closest('a');
         if (link && link.href.startsWith('http')) {
             event.preventDefault();
-            require('@electron/remote').shell.openExternal(link.href);
+            window.electron.openExternal(link.href);
         }
     });
 
@@ -30,7 +26,7 @@ document.addEventListener('DOMContentLoaded', () => {
         progressText.textContent = 'Scanning notes...';
         
         try {
-            const result = await ipcRenderer.invoke('scan-notes');
+            const result = await window.electron.scan();
             showScreen('select-screen');
             const parsedData = JSON.parse(result);
             displayNotesHierarchy(parsedData);
@@ -48,13 +44,13 @@ document.addEventListener('DOMContentLoaded', () => {
     // Directory selection
     document.getElementById('choose-directory').addEventListener('click', async () => {
         try {
-            const result = await ipcRenderer.invoke('select-directory');
-            if (result.canceled) return;
+            const result = await window.electron.selectDirectory();
+            if (!result || result.canceled) return;
 
             const directoryPath = result.filePaths[0];
             
             // Check if directory is empty
-            const files = await ipcRenderer.invoke('check-directory', directoryPath);
+            const files = await window.electron.checkDirectory(directoryPath);
             const directoryPathInput = document.getElementById('directory-path');
             const directoryError = document.getElementById('directory-error');
             const exportButton = document.getElementById('export-button');
@@ -480,124 +476,136 @@ document.addEventListener('DOMContentLoaded', () => {
         entry.appendChild(time);
         entry.appendChild(msg);
         logContent.appendChild(entry);
-        
-        // Auto-scroll to bottom
-        const container = document.querySelector('.log-container');
-        container.scrollTop = container.scrollHeight;
     }
 
     // Export button click handler
-    document.getElementById('export-button').addEventListener('click', async () => {
-        const selectedNotes = [];
-        const checkboxes = document.querySelectorAll('.note-container > .hierarchy-item > input[type="checkbox"]:checked');
-        
-        // Clear previous logs
-        document.getElementById('log-content').innerHTML = '';
-        addLogEntry('Starting export process...', 'info');
-        
-        // Build the full paths for each selected note
-        checkboxes.forEach(checkbox => {
-            let node = checkbox.closest('.note-container');
-            let noteName = node.querySelector('.note-content span:not(.size-info)').textContent.trim();
-            let folders = [];
-            let accountName = null;
+    const exportButton = document.getElementById('export-button');
+    console.log('Found export button:', exportButton); // Debug log
+    if (exportButton) {
+        exportButton.addEventListener('click', async () => {
+            console.log('Export button clicked'); // Debug log
+            const selectedNotes = [];
+            const checkboxes = document.querySelectorAll('input[type="checkbox"][data-note-id]:checked');
+            console.log('Selected checkboxes:', checkboxes.length); // Debug log
             
-            // Traverse up to build the full path
-            while (node.parentElement) {
-                node = node.parentElement.closest('.folder-container, .account-container');
-                if (!node) break;
+            // Clear previous logs
+            document.getElementById('log-content').innerHTML = '';
+            addLogEntry('Starting export process...', 'info');
+            
+            // Build the full paths for each selected note
+            checkboxes.forEach(checkbox => {
+                let node = checkbox.closest('.note-container');
+                let noteName = node.querySelector('.note-content span:not(.size-info)').textContent.trim();
+                let folders = [];
+                let accountName = null;
                 
-                if (node.classList.contains('account-container')) {
-                    // Found the account, store it separately
-                    const accountElement = node.querySelector('span:not(.triangle)');
-                    if (accountElement) {
-                        accountName = accountElement.textContent.trim();
-                    }
-                    break;
-                } else {
-                    // It's a folder, add it to the path
-                    const nameElement = node.querySelector('.folder-name');
-                    if (nameElement) {
-                        const name = nameElement.textContent.trim();
-                        if (name) {
-                            folders.unshift(name);
+                // Traverse up to build the full path
+                while (node.parentElement) {
+                    node = node.parentElement.closest('.folder-container, .account-container');
+                    if (!node) break;
+                    
+                    if (node.classList.contains('account-container')) {
+                        // Found the account, store it separately
+                        const accountElement = node.querySelector('span:not(.triangle)');
+                        if (accountElement) {
+                            accountName = accountElement.textContent.trim();
+                        }
+                        break;
+                    } else {
+                        // It's a folder, add it to the path
+                        const nameElement = node.querySelector('.folder-name');
+                        if (nameElement) {
+                            const name = nameElement.textContent.trim();
+                            if (name) {
+                                folders.unshift(name);
+                            }
                         }
                     }
                 }
-            }
+                
+                // Construct the final path with account name first
+                if (accountName && noteName) {
+                    // Include all folders in the path, including "Notes"
+                    const fullPath = [accountName, ...folders, noteName].filter(Boolean);
+                    const notePath = fullPath.join('/');
+                    console.log('Constructed note path:', notePath);
+                    selectedNotes.push(notePath);
+                }
+            });
+
+            const outputDir = document.getElementById('directory-path').value;
+            // Get the selected format from radio buttons
+            const selectedFormat = document.querySelector('input[name="format"]:checked');
+            const format = selectedFormat ? selectedFormat.value : 'markdown'; // default to markdown if nothing selected
             
-            // Construct the final path with account name first
-            if (accountName && noteName) {
-                // Include all folders in the path, including "Notes"
-                const fullPath = [accountName, ...folders, noteName].filter(Boolean);
-                const notePath = fullPath.join('/');
-                console.log('Constructed note path:', notePath);
-                selectedNotes.push(notePath);
+            console.log('Export details:', { // Debug log
+                selectedNotes,
+                outputDir,
+                format
+            });
+
+            if (!outputDir || selectedNotes.length === 0) {
+                addLogEntry('No notes selected or output directory not specified', 'error');
+                return;
+            }
+
+            // Show export screen
+            showScreen('export-screen');
+            
+            // Initialize progress elements
+            const progressBar = document.getElementById('progress-bar');
+            const progressCount = document.getElementById('progress-count');
+            const exportStatus = document.getElementById('export-status');
+            const totalSteps = selectedNotes.length * 2; // Double the total for export + copy steps
+            let processedSteps = 0;
+
+            try {
+                addLogEntry(`Found ${selectedNotes.length} notes to export`, 'info');
+                console.log('Starting export of notes:', selectedNotes);
+                
+                for (const notePath of selectedNotes) {
+                    // Update status to show current note path
+                    exportStatus.textContent = notePath;
+                    addLogEntry(`Extracting note: ${notePath}`, 'info');
+                    
+                    // Export the note with format parameter
+                    await window.electron.exportNotes([notePath, outputDir, format]);
+
+                    // Update progress for export step
+                    processedSteps++;
+                    const exportProgress = (processedSteps / totalSteps) * 100;
+                    progressBar.style.width = `${exportProgress}%`;
+                    progressCount.textContent = `${Math.ceil(processedSteps/2)}/${selectedNotes.length}`;
+                    addLogEntry(`Successfully extracted note: ${notePath}`, 'success');
+
+                    // Update status for copy step
+                    addLogEntry(`Converting note: ${notePath}`, 'info');
+
+                    // Update progress for copy step (handled by main process)
+                    processedSteps++;
+                    const copyProgress = (processedSteps / totalSteps) * 100;
+                    progressBar.style.width = `${copyProgress}%`;
+                    progressCount.textContent = `${Math.ceil(processedSteps/2)}/${selectedNotes.length}`;
+                    addLogEntry(`Successfully converted note: ${notePath}`, 'success');
+                }
+
+                // Show completion
+                exportStatus.textContent = 'Export completed';
+                addLogEntry('Export process completed successfully!', 'success');
+
+                // Update done screen subtitle and show it
+                const doneSubtitle = document.getElementById('done-subtitle');
+                doneSubtitle.textContent = `${selectedNotes.length} note${selectedNotes.length !== 1 ? 's' : ''} successfully exported`;
+                showScreen('done-screen');
+
+            } catch (error) {
+                console.error('Export error:', error);
+                exportStatus.textContent = `Error: ${error.message}`;
+                exportStatus.style.color = '#ff3b30';
+                addLogEntry(`Error: ${error.message}`, 'error');
             }
         });
-
-        const outputDir = document.getElementById('directory-path').value;
-        const format = document.getElementById('format-select').value;
-        
-        if (!outputDir || selectedNotes.length === 0) {
-            addLogEntry('No notes selected or output directory not specified', 'error');
-            return;
-        }
-
-        // Show export screen
-        showScreen('export-screen');
-        
-        // Initialize progress elements
-        const progressBar = document.getElementById('progress-bar');
-        const progressCount = document.getElementById('progress-count');
-        const exportStatus = document.getElementById('export-status');
-        const totalSteps = selectedNotes.length * 2; // Double the total for export + copy steps
-        let processedSteps = 0;
-
-        try {
-            addLogEntry(`Found ${selectedNotes.length} notes to export`, 'info');
-            console.log('Starting export of notes:', selectedNotes);
-            
-            for (const notePath of selectedNotes) {
-                // Update status to show current note path
-                exportStatus.textContent = notePath;
-                addLogEntry(`Extracting note: ${notePath}`, 'info');
-                
-                // Export the note with format parameter
-                await ipcRenderer.invoke('export-notes', [notePath, outputDir, format]);
-
-                // Update progress for export step
-                processedSteps++;
-                const exportProgress = (processedSteps / totalSteps) * 100;
-                progressBar.style.width = `${exportProgress}%`;
-                progressCount.textContent = `${Math.ceil(processedSteps/2)}/${selectedNotes.length}`;
-                addLogEntry(`Successfully extracted note: ${notePath}`, 'success');
-
-                // Update status for copy step
-                addLogEntry(`Converting note: ${notePath}`, 'info');
-
-                // Update progress for copy step (handled by main process)
-                processedSteps++;
-                const copyProgress = (processedSteps / totalSteps) * 100;
-                progressBar.style.width = `${copyProgress}%`;
-                progressCount.textContent = `${Math.ceil(processedSteps/2)}/${selectedNotes.length}`;
-                addLogEntry(`Successfully converted note: ${notePath}`, 'success');
-            }
-
-            // Show completion
-            exportStatus.textContent = 'Export completed';
-            addLogEntry('Export process completed successfully!', 'success');
-
-            // Update done screen subtitle and show it
-            const doneSubtitle = document.getElementById('done-subtitle');
-            doneSubtitle.textContent = `${selectedNotes.length} note${selectedNotes.length !== 1 ? 's' : ''} successfully exported`;
-            showScreen('done-screen');
-
-        } catch (error) {
-            console.error('Export error:', error);
-            exportStatus.textContent = `Error: ${error.message}`;
-            exportStatus.style.color = '#ff3b30';
-            addLogEntry(`Error: ${error.message}`, 'error');
-        }
-    });
+    } else {
+        console.error('Export button not found'); // Debug log
+    }
 }); 

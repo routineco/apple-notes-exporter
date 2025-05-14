@@ -1,6 +1,6 @@
 on run argv
     if length of argv < 2 then
-        return "Error: Please provide note path and output directory (e.g., 'iCloud/Folder/Note' '/path/to/output')"
+        return "[error] Please provide note path and output directory (e.g., 'iCloud/Folder/Note' '/path/to/output')"
     end if
     
     set notePath to item 1 of argv
@@ -19,25 +19,26 @@ on run argv
                 set end of folderPath to item i of pathParts
             end repeat
             
-            log "Looking for note:"
-            log "  Account: " & accountName
-            log "  Folders: " & my joinList(folderPath, "/")
-            log "  Note: " & noteName
+            log "[info] locating for note:"
+            log "  [account] " & accountName
+            log "  [folders] " & my joinList(folderPath, "/")
+            log "  [note] " & noteName
             
             -- Find the account
             set targetAccount to null
-            log "Available accounts:"
+            log "[info] looking for account: " & accountName
+            log "[info] available accounts: "
             repeat with theAccount in accounts
                 log "  - " & name of theAccount
                 if name of theAccount is equal to accountName then
                     set targetAccount to theAccount
-                    log "    Found target account!"
+                    log "[info] found target account"
                     exit repeat
                 end if
             end repeat
             
             if targetAccount is null then
-                error "Account not found: " & accountName
+                error "[error] account not found: " & accountName
             end if
             
             -- Navigate through folders
@@ -45,19 +46,19 @@ on run argv
             
             -- First find the root folder if we have folders
             if length of folderPath > 0 then
-                log "Looking for root folder: " & item 1 of folderPath
-                log "Available root folders in " & accountName & ":"
+                log "[info] looking for root folder: " & item 1 of folderPath
+                log "[info] available root folders"
                 repeat with theFolder in folders of targetAccount
                     log "  - " & name of theFolder
                     if name of theFolder is equal to (item 1 of folderPath) then
                         set currentFolder to theFolder
-                        log "    Found target folder!"
+                        log "[info] found target root folder"
                         exit repeat
                     end if
                 end repeat
                 
                 if currentFolder is null then
-                    error "Root folder not found: " & (item 1 of folderPath)
+                    error "[error] root folder not found: " & (item 1 of folderPath)
                 end if
                 
                 -- Then traverse the rest of the path if we have more folders
@@ -65,21 +66,21 @@ on run argv
                     repeat with i from 2 to length of folderPath
                         set folderName to item i of folderPath
                         set found to false
-                        log "Looking for subfolder: " & folderName
-                        log "Available subfolders in " & name of currentFolder & ":"
+                        log "[info] looking for subfolder: " & folderName
+                        log "[info] available subfolders in " & name of currentFolder & ":"
                         
                         repeat with theFolder in folders of currentFolder
                             log "  - " & name of theFolder
                             if name of theFolder is equal to folderName then
                                 set currentFolder to theFolder
                                 set found to true
-                                log "    Found target folder!"
+                                log "[info] found target folder"
                                 exit repeat
                             end if
                         end repeat
                         
                         if not found then
-                            error "Subfolder not found: " & folderName
+                            error "[error] subfolder not found: " & folderName
                         end if
                     end repeat
                 end if
@@ -91,25 +92,25 @@ on run argv
             -- Find the note
             set targetNote to null
             if currentFolder is not null then
-                log "Looking for note: " & noteName
-                log "Available notes in " & name of currentFolder & ":"
+                log "[info] looking for note: " & noteName
+                log "[info] available notes in " & name of currentFolder & ":"
                 repeat with theNote in notes of currentFolder
                     log "  - " & name of theNote
                     if name of theNote is equal to noteName then
                         set targetNote to theNote
-                        log "    Found target note!"
+                        log "[info] found target note"
                         exit repeat
                     end if
                 end repeat
             end if
             
             if targetNote is null then
-                error "Note not found: " & noteName
+                error "[error] note not found: " & noteName
             end if
             
             -- Check if note is password protected
             if password protected of targetNote then
-                error "Note is password protected and cannot be exported"
+                error "[error] note is password protected and cannot be exported"
             end if
             
             -- Get note content
@@ -120,7 +121,7 @@ on run argv
                 try
                     set noteContent to plaintext of targetNote
                 on error
-                    error "Could not get note content"
+                    error "[error] unable to get note content"
                 end try
             end try
             
@@ -133,40 +134,39 @@ on run argv
                 -- First ensure the output directory exists
                 try
                     do shell script "mkdir -p " & quoted form of outputDir
-                    log "Created output directory: " & outputDir
+                    log "[info] created output directory: " & outputDir
                 end try
                 
                 -- Try to touch the file to test write permissions
                 try
                     do shell script "touch " & quoted form of outputFile
-                    log "Successfully created output file"
+                    log "[info] created output file"
                 on error errMsg
-                    log "Error creating output file: " & errMsg
-                    error "Cannot create output file (permission denied or invalid path)"
+                    error "[error] unable to create output file (permission denied or invalid path): " & errMsg
                 end try
                 
-                log "Opening file for writing: " & outputFile
+                log "[info] opening file for writing: " & outputFile
                 set theFile to open for access POSIX file outputFile with write permission
                 
-                log "Writing note content..."
+                log "[info] writing note content"
                 -- Write raw note content without HTML wrapping
                 write noteContent to theFile as «class utf8»
                 
-                log "Closing file..."
+                log "[info] closing file"
                 close access theFile
                 
-                log "Export completed successfully"
+                log "[info] export completed successfully"
                 return "Successfully exported note to " & outputFile
                 
             on error errMsg
-                log "Error during file operations: " & errMsg
+                log "[error] error during file operations: " & errMsg
                 if theFile is not null then
                     try
-                        log "Attempting to close file after error..."
+                        log "[info] attempting to close file after error"
                         close access theFile
                     end try
                 end if
-                error "Failed to write file: " & errMsg
+                error "[error] failed to write file: " & errMsg
             end try
         end tell
     on error errMsg
