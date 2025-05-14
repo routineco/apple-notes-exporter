@@ -18,7 +18,7 @@ We started by trying to extract information directly from the SQlite Apple Notes
 
 Unfortunately, this is a not a reliable method since Apple Notes transitioned to iCloud as the data is not scrambled through multiple databases.
 
-### ✅ 1. JXA → HTML
+### ✅ 2. JXA → HTML
 
 Then, we tried accessing notes using JavaScript for Automation (JXA):
 
@@ -36,7 +36,7 @@ Even though it worked pretty smoothly, we encountered some limitations.
 - **Hyperlinks are omitted**
 - **Checkbox state (checked/unchecked) is lost**
 
-### ✅ 2. JXA → HTML → RTF (via `textutil`)
+### ✅ 3. JXA → HTML → RTF (via `textutil`)
 
 We tried converting HTML to RTF to capture richer formatting.
 
@@ -53,7 +53,7 @@ Unfortunately there were still limitations.
 - Checklists become generic bullets or glyphs
 - No reliable marker for list types
 
-### ✅ 3. Swift App (via `NSAttributedString`)
+### ✅ 4. Swift App (via `NSAttributedString`)
 
 We then tried building a native Swift app using `ScriptingBridge` to extract `NSAttributedString` representations of notes.
 
@@ -66,7 +66,7 @@ The goal, more specifically, was to access metadata attributes like `.link`, `pr
 - `.presentationIntents` for checklists are **not set**, even for visual checkboxes
 - We can detect formatting (bold, italic) and some list nesting via `.headIndent`, but **not checkbox state**
 
-## ✅ Final Approach: AppleScript Export
+## ✅ 5. AppleScript Export
 
 After evaluating all options, we settled on **AppleScript** as the simplest and most reliable method to extract note content in a structured format.
 
