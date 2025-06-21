@@ -475,41 +475,64 @@
             max-width: 500px;
             margin: 40px 0;
             position: relative;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+
+        .circular-progress {
+            position: relative;
+            width: 180px;
+            height: 180px;
+            margin: 20px 0;
+        }
+
+        .circular-progress svg {
+            width: 100%;
+            height: 100%;
+            transform: rotate(-90deg);
+        }
+
+        .circular-progress .progress-circle-bg {
+            fill: none;
+            stroke: #e8e8ed;
+            stroke-width: 10;
+        }
+
+        .circular-progress .progress-circle {
+            fill: none;
+            stroke: #F96359;
+            stroke-width: 10;
+            stroke-linecap: round;
+            stroke-dasharray: 471;
+            stroke-dashoffset: 471;
+            transition: stroke-dashoffset 0.3s ease;
+        }
+
+        .progress-percentage {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            font-size: 2em;
+            font-weight: 600;
+            color: #1d1d1f;
         }
 
         .export-status {
-            margin-bottom: 8px;
+            margin-top: 16px;
             color: #666;
-            font-size: 0.9em;
+            font-size: 1em;
             text-align: center;
             word-break: break-word;
-        }
-
-        .progress-bar-container {
-            width: 100%;
-            height: 8px;
-            background-color: #e8e8ed;
-            border-radius: 4px;
-            overflow: hidden;
-            margin: 8px 0;
-        }
-
-        .progress-bar {
-            width: 0%;
-            height: 100%;
-            background-color: #F96359;
-            border-radius: 4px;
-            transition: width 0.3s ease;
+            max-width: 400px;
         }
 
         .progress-count {
-            position: absolute;
-            right: 0;
-            top: 50%;
-            transform: translateY(-50%);
+            margin-top: 8px;
             color: #666;
             font-size: 0.9em;
-            margin-right: -50px;
+            text-align: center;
         }
 
         .triangle.expandable svg {
@@ -918,14 +941,18 @@
     <div id="export-screen" class="screen">
         <div class="screen-header">
             <h1>Step 4</h1>
-            <div class="subtitle">Converting notes</div>
+            <div class="subtitle">Exporting notes</div>
         </div>
         <div class="screen-content">
             <div class="progress-section">
-                <div id="export-status" class="export-status"></div>
-                <div class="progress-bar-container">
-                    <div id="progress-bar" class="progress-bar"></div>
+                <div class="circular-progress">
+                    <svg viewBox="0 0 180 180">
+                        <circle class="progress-circle-bg" cx="90" cy="90" r="75"></circle>
+                        <circle id="progress-circle" class="progress-circle" cx="90" cy="90" r="75"></circle>
+                    </svg>
+                    <div id="progress-percentage" class="progress-percentage">0%</div>
                 </div>
+                <div id="export-status" class="export-status">Preparing export...</div>
                 <div id="progress-count" class="progress-count">0/0</div>
             </div>
         </div>
@@ -1234,17 +1261,28 @@
                     showScreen('export-screen');
                     
                     // Initialize progress elements
-                    const progressBar = document.getElementById('progress-bar');
+                    const progressCircle = document.getElementById('progress-circle');
+                    const progressPercentage = document.getElementById('progress-percentage');
                     const progressCount = document.getElementById('progress-count');
                     const exportStatus = document.getElementById('export-status');
                     const totalSteps = selectedNotes.length * 2; // Double the total for export + copy steps
                     let processedSteps = 0;
 
+                    // Function to update circular progress
+                    function updateCircularProgress(percentage) {
+                        const circumference = 2 * Math.PI * 75; // r = 75
+                        const offset = circumference - (percentage / 100) * circumference;
+                        progressCircle.style.strokeDashoffset = offset;
+                        progressPercentage.textContent = `${Math.round(percentage)}%`;
+                    }
+
                     try {
                         console.log(`Found ${selectedNotes.length} notes to export`);
                         console.log('Starting export of notes:', selectedNotes);
                         
-                        for (const notePath of selectedNotes) {
+                        for (let i = 0; i < selectedNotes.length; i++) {
+                            const notePath = selectedNotes[i];
+                            
                             // Update status to show current note path
                             exportStatus.textContent = notePath;
                             console.log(`Extracting note: ${notePath}`);
@@ -1255,7 +1293,7 @@
                             // Update progress for export step
                             processedSteps++;
                             const exportProgress = (processedSteps / totalSteps) * 100;
-                            progressBar.style.width = `${exportProgress}%`;
+                            updateCircularProgress(exportProgress);
                             progressCount.textContent = `${Math.ceil(processedSteps/2)}/${selectedNotes.length}`;
                             console.log(`Successfully extracted note: ${notePath}`);
 
@@ -1265,19 +1303,23 @@
                             // Update progress for copy step (handled by main process)
                             processedSteps++;
                             const copyProgress = (processedSteps / totalSteps) * 100;
-                            progressBar.style.width = `${copyProgress}%`;
+                            updateCircularProgress(copyProgress);
                             progressCount.textContent = `${Math.ceil(processedSteps/2)}/${selectedNotes.length}`;
                             console.log(`Successfully converted note: ${notePath}`);
                         }
 
                         // Show completion
-                        exportStatus.textContent = 'Export completed';
+                        exportStatus.textContent = 'Export completed successfully!';
+                        updateCircularProgress(100);
                         console.log('Export process completed successfully!');
 
-                        // Update done screen subtitle and show it
-                        const doneSubtitle = document.getElementById('done-subtitle');
-                        doneSubtitle.textContent = `${selectedNotes.length} note${selectedNotes.length !== 1 ? 's' : ''} successfully exported`;
-                        showScreen('done-screen');
+                        // Wait a moment to show completion, then go to done screen
+                        setTimeout(() => {
+                            // Update done screen subtitle and show it
+                            const doneSubtitle = document.getElementById('done-subtitle');
+                            doneSubtitle.textContent = `${selectedNotes.length} note${selectedNotes.length !== 1 ? 's' : ''} successfully exported`;
+                            showScreen('done-screen');
+                        }, 1500);
 
                     } catch (error) {
                         console.error('Export error:', error);
