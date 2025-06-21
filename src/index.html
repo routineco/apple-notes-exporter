@@ -799,6 +799,36 @@
         .get-started-button:hover {
             background-color: #f74b40;
         }
+
+        .button-group {
+            display: flex;
+            gap: 16px;
+            margin-bottom: 16px;
+            justify-content: center;
+            align-items: center;
+        }
+
+        .existing-content-message {
+            color: #515154;
+            font-size: 1em;
+            line-height: 1.5;
+            text-align: center;
+            margin: 0;
+            max-width: 500px;
+        }
+
+        #rescanButton {
+            background-color: #8e8e93;
+        }
+
+        #rescanButton:hover {
+            background-color: #7c7c81;
+        }
+
+        #rescanButton:disabled {
+            background-color: #ccc;
+            cursor: not-allowed;
+        }
     </style>
 </head>
 <body>
@@ -816,10 +846,19 @@
             <div class="subtitle">Scan all your Apple Notes accounts, folders and notes</div>
         </div>
         <div class="screen-content">
-            <button id="scanButton" class="scan-button">Scan</button>
+            <div id="scan-buttons-container">
+                <button id="scanButton" class="scan-button">Scan</button>
+                <div id="continue-rescan-container" style="display: none;">
+                    <div class="button-group">
+                        <button id="continueButton" class="scan-button">Continue</button>
+                        <button id="rescanButton" class="scan-button">Rescan</button>
+                    </div>
+                    <p class="existing-content-message">ℹ️ It seems that you had already started exporting notes. You can pick up where you left or rescan the content of your Apple Notes.</p>
+                </div>
+            </div>
             <div class="loading-container" style="display: none;">
                 <div class="loading-spinner"></div>
-                <div class="loading-text">Scanning notes...<br/><br/>This may take several minutes depending on the number of notes.</div>
+                <div class="loading-text">Scanning notes...<br/><br/>This may take a few minutes to tens of hours depending on the number of notes.</div>
                 <div class="log-container" id="scriptOutput"></div>
             </div>
             <div id="progressText"></div>
@@ -879,7 +918,7 @@
     <div id="export-screen" class="screen">
         <div class="screen-header">
             <h1>Step 4</h1>
-            <div class="subtitle">Exporting & converting notes</div>
+            <div class="subtitle">Converting notes</div>
         </div>
         <div class="screen-content">
             <div class="progress-section">
@@ -888,15 +927,6 @@
                     <div id="progress-bar" class="progress-bar"></div>
                 </div>
                 <div id="progress-count" class="progress-count">0/0</div>
-            </div>
-            <div id="export-logs">
-                <div class="log-container">
-                    <div id="log-content"></div>
-                </div>
-            </div>
-            <div class="export-completion">
-                <h2>Manage your notes in Routine's all-in-one productivity app</h2>
-                <img src="assets/agenda.png" alt="Routine App Screenshot" class="routine-screenshot">
             </div>
         </div>
     </div>
@@ -918,7 +948,7 @@
                 <img class="platform-icon" src="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 576 512'%3E%3Cpath d='M420.55,301.93a24,24,0,1,1,24-24,24,24,0,0,1-24,24m-265.1,0a24,24,0,1,1,24-24,24,24,0,0,1-24,24m273.7-144.48,47.94-83a10,10,0,1,0-17.27-10h0l-48.54,84.07a301.25,301.25,0,0,0-246.56,0L116.18,64.45a10,10,0,1,0-17.27,10h0l47.94,83C64.53,202.22,8.24,285.55,0,384H576c-8.24-98.45-64.54-181.78-146.85-226.55'/%3E%3C/svg%3E" alt="Android">
             </div>
             <a href="https://routine.co" target="_blank" class="get-started-button">Get started</a>
-            <img src="assets/routine.png" alt="Routine App Screenshot" class="routine-screenshot">
+            <img src="https://routine.co/cover.png" alt="Routine App Screenshot" class="routine-screenshot">
         </div>
     </div>
 
@@ -931,6 +961,11 @@
             
             // Show the requested screen
             document.getElementById(screenId).classList.add('active');
+            
+            // Check for existing content when showing scan screen
+            if (screenId === 'scan-screen') {
+                checkExistingContent();
+            }
         }
 
         function startScanning() {
@@ -988,15 +1023,94 @@
             scriptOutput.appendChild(logLine);
         }
 
+        // Check for existing content and update UI accordingly
+        async function checkExistingContent() {
+            try {
+                const hasContent = await window.electron.checkContentDir();
+                const scanButton = document.getElementById('scanButton');
+                const continueRescanContainer = document.getElementById('continue-rescan-container');
+                
+                if (hasContent) {
+                    // Hide the scan button and show continue/rescan buttons
+                    scanButton.style.display = 'none';
+                    continueRescanContainer.style.display = 'block';
+                } else {
+                    // Show the scan button and hide continue/rescan buttons
+                    scanButton.style.display = 'block';
+                    continueRescanContainer.style.display = 'none';
+                }
+            } catch (error) {
+                console.error('Error checking existing content:', error);
+                // Default to showing scan button on error
+                const scanButton = document.getElementById('scanButton');
+                const continueRescanContainer = document.getElementById('continue-rescan-container');
+                scanButton.style.display = 'block';
+                continueRescanContainer.style.display = 'none';
+            }
+        }
+
+        // Continue with existing content
+        async function continueWithExistingContent() {
+            try {
+                // Use existing content directory to build hierarchy directly
+                const result = await window.electron.catalogContentDir();
+                console.log('Continue completed:', result);
+                const data = JSON.parse(result);
+                displayNotesHierarchy(data);
+                showScreen('select-screen');
+            } catch (error) {
+                console.error('Continue failed:', error);
+                addLogLine('Continue failed: ' + error.message, true);
+            }
+        }
+
+
+
         // Initialize event listeners when the document is loaded
-        document.addEventListener('DOMContentLoaded', () => {
-            console.log('DOM loaded, setting up event listeners');
+        document.addEventListener('DOMContentLoaded', async () => {
+            // Handle external links - open in default browser
+            document.addEventListener('click', (event) => {
+                const link = event.target.closest('a');
+                if (link && link.href && link.href.startsWith('http')) {
+                    event.preventDefault();
+                    if (window.electron && window.electron.openExternal) {
+                        window.electron.openExternal(link.href);
+                    }
+                }
+            });
+            
+            // Check for existing content first
+            await checkExistingContent();
             
             // Add click handler for scan button
             const scanButton = document.getElementById('scanButton');
             if (scanButton) {
                 scanButton.addEventListener('click', startScanning);
                 console.log('Scan button handler attached');
+            }
+
+            // Add click handler for continue button
+            const continueButton = document.getElementById('continueButton');
+            if (continueButton) {
+                continueButton.addEventListener('click', continueWithExistingContent);
+                console.log('Continue button handler attached');
+            }
+
+            // Add click handler for rescan button
+            const rescanButton = document.getElementById('rescanButton');
+            if (rescanButton) {
+                rescanButton.addEventListener('click', async () => {
+                    try {
+                        console.log('Clearing existing content before rescanning...');
+                        await window.electron.clearContentDir();
+                        console.log('Content cleared, starting fresh scan...');
+                        startScanning();
+                    } catch (error) {
+                        console.error('Error clearing content directory:', error);
+                        addLogLine('Error clearing existing content: ' + error.message, true);
+                    }
+                });
+                console.log('Rescan button handler attached');
             }
 
             // Add click handler for next button
@@ -1046,6 +1160,130 @@
                     } catch (error) {
                         const directoryError = document.getElementById('directory-error');
                         directoryError.textContent = `Error: ${error.message}`;
+                    }
+                });
+            }
+
+            // Add export button handler
+            const exportButton = document.getElementById('export-button');
+            if (exportButton) {
+                exportButton.addEventListener('click', async () => {
+                    console.log('Export button clicked');
+                    const selectedNotes = [];
+                    const checkboxes = document.querySelectorAll('input[type="checkbox"][data-note-id]:checked');
+                    console.log('Selected checkboxes:', checkboxes.length);
+                    
+                    // Build the full paths for each selected note
+                    checkboxes.forEach(checkbox => {
+                        let node = checkbox.closest('.note-container');
+                        let noteName = node.querySelector('.note-content span:not(.size-info)').textContent.trim();
+                        let folders = [];
+                        let accountName = null;
+                        
+                        // Traverse up to build the full path
+                        while (node.parentElement) {
+                            node = node.parentElement.closest('.folder-container, .account-container');
+                            if (!node) break;
+                            
+                            if (node.classList.contains('account-container')) {
+                                // Found the account, store it separately
+                                const accountElement = node.querySelector('span:not(.triangle)');
+                                if (accountElement) {
+                                    accountName = accountElement.textContent.trim();
+                                }
+                                break;
+                            } else {
+                                // It's a folder, add it to the path
+                                const nameElement = node.querySelector('.folder-name');
+                                if (nameElement) {
+                                    const name = nameElement.textContent.trim();
+                                    if (name) {
+                                        folders.unshift(name);
+                                    }
+                                }
+                            }
+                        }
+                        
+                        // Construct the final path with account name first
+                        if (accountName && noteName) {
+                            // Include all folders in the path, including "Notes"
+                            const fullPath = [accountName, ...folders, noteName].filter(Boolean);
+                            const notePath = fullPath.join('/');
+                            console.log('Constructed note path:', notePath);
+                            selectedNotes.push(notePath);
+                        }
+                    });
+
+                    const outputDir = document.getElementById('directory-path').value;
+                    // Get the selected format from radio buttons
+                    const selectedFormat = document.querySelector('input[name="format"]:checked');
+                    const format = selectedFormat ? selectedFormat.value : 'markdown'; // default to markdown if nothing selected
+                    
+                    console.log('Export details:', {
+                        selectedNotes,
+                        outputDir,
+                        format
+                    });
+
+                    if (!outputDir || selectedNotes.length === 0) {
+                        console.error('No notes selected or output directory not specified');
+                        return;
+                    }
+
+                    // Show export screen
+                    showScreen('export-screen');
+                    
+                    // Initialize progress elements
+                    const progressBar = document.getElementById('progress-bar');
+                    const progressCount = document.getElementById('progress-count');
+                    const exportStatus = document.getElementById('export-status');
+                    const totalSteps = selectedNotes.length * 2; // Double the total for export + copy steps
+                    let processedSteps = 0;
+
+                    try {
+                        console.log(`Found ${selectedNotes.length} notes to export`);
+                        console.log('Starting export of notes:', selectedNotes);
+                        
+                        for (const notePath of selectedNotes) {
+                            // Update status to show current note path
+                            exportStatus.textContent = notePath;
+                            console.log(`Extracting note: ${notePath}`);
+                            
+                            // Export the note with format parameter
+                            await window.electron.exportNote([notePath, outputDir, format]);
+
+                            // Update progress for export step
+                            processedSteps++;
+                            const exportProgress = (processedSteps / totalSteps) * 100;
+                            progressBar.style.width = `${exportProgress}%`;
+                            progressCount.textContent = `${Math.ceil(processedSteps/2)}/${selectedNotes.length}`;
+                            console.log(`Successfully extracted note: ${notePath}`);
+
+                            // Update status for copy step
+                            console.log(`Converting note: ${notePath}`);
+
+                            // Update progress for copy step (handled by main process)
+                            processedSteps++;
+                            const copyProgress = (processedSteps / totalSteps) * 100;
+                            progressBar.style.width = `${copyProgress}%`;
+                            progressCount.textContent = `${Math.ceil(processedSteps/2)}/${selectedNotes.length}`;
+                            console.log(`Successfully converted note: ${notePath}`);
+                        }
+
+                        // Show completion
+                        exportStatus.textContent = 'Export completed';
+                        console.log('Export process completed successfully!');
+
+                        // Update done screen subtitle and show it
+                        const doneSubtitle = document.getElementById('done-subtitle');
+                        doneSubtitle.textContent = `${selectedNotes.length} note${selectedNotes.length !== 1 ? 's' : ''} successfully exported`;
+                        showScreen('done-screen');
+
+                    } catch (error) {
+                        console.error('Export error:', error);
+                        exportStatus.textContent = `Error: ${error.message}`;
+                        exportStatus.style.color = '#ff3b30';
+                        console.error(`Error: ${error.message}`);
                     }
                 });
             }
@@ -1282,6 +1520,5 @@
             console.log(`Folder "${folderName}" is now ${children.classList.contains('collapsed') ? 'collapsed' : 'expanded'}`);
         }
     </script>
-    <script src="js/script.js"></script>
 </body>
 </html> 

@@ -569,7 +569,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     addLogEntry(`Extracting note: ${notePath}`, 'info');
                     
                     // Export the note with format parameter
-                    await window.electron.exportNotes([notePath, outputDir, format]);
+                    await window.electron.exportNote([notePath, outputDir, format]);
 
                     // Update progress for export step
                     processedSteps++;

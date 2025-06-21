@@ -66,7 +66,7 @@ The goal, more specifically, was to access metadata attributes like `.link`, `pr
 - `.presentationIntents` for checklists are **not set**, even for visual checkboxes
 - We can detect formatting (bold, italic) and some list nesting via `.headIndent`, but **not checkbox state**
 
-## ✅ 5. AppleScript Export
+### ✅ 5. AppleScript Export
 
 After evaluating all options, we settled on **AppleScript** as the simplest and most reliable method to extract note content in a structured format.
 
@@ -90,8 +90,45 @@ end tell
 - No support for detecting hyperlinks
 - No way to detect checklist items or their status
 
-## 🔚 Conclusion
+### 🔚 Conclusion
 
 After extensive exploration, we concluded:
 
 **Since there is no method for extracting metadata for hyperlinks and checklists, Apple Script is the most reliable way to automatable exporting Apple Notes.**  
+
+## 👨🏻‍💻 Development
+
+In order to set up the dev environment, follow the steps below (for macOS):
+
+1. $> brew install npm
+2. $> npm install
+3. $> npm start
+
+You can run the core scripts individually, specifically:
+
+$> osascript scripts/list.applescript
+
+## 📱 Application
+
+The application follows a slightly unexpected procedure.
+
+Indeed, because the Apple Script protocol is particularly slow, the number of calls to Apple Notes must be reduced as much as possible.
+
+To give some context, listing 10,000 notes take about 20 hours.
+
+The original flow went as follows:
+1. Browse the hierarchy of notes (scripts/list.applescript)
+2. Let the user select the notes to export
+3. For each note to export:
+  1. Export the note to HTML (scripts/export.applescript) in a temporary file
+  2. Convert (if necessary) to the format the user picked
+
+Unfortunately, the performance was catastrophic because going through the hiearchy already takes
+the bulk of the time.
+
+The exporting was therefore merged with the listing. The flow is therefore now:
+
+1. Browse the hiearchy and export all notes in the app data directory
+2. Let the user select the notes to export
+3. For each note to export:
+  1. Convert (if necessary) to the format the user picked
