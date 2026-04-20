@@ -9,7 +9,14 @@ out/
 .DS_Store
 
 # Environment variables
-.env
+.env*
+
+# Secrets and credentials
+*.pem
+*.p12
+*.key
+credentials.json
+secrets/
 
 # Logs
 *.log

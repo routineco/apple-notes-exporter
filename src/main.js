@@ -379,8 +379,3 @@ ipcMain.handle('export-to-pdf', async (event, { html, outputPath }) => {
     return { success: false, error: error.message };
   }
 });
-
-// Make sure to cleanup when the app quits
-app.on('before-quit', async () => {
-  // Placeholder for the removed pdfExporter.cleanup()
-}); 

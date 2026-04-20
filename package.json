@@ -7,8 +7,18 @@
     "start": "electron .",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
-  "author": "",
-  "license": "ISC",
+  "author": "Julien Quintard",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/routineco/apple-notes-exporter"
+  },
+  "homepage": "https://apple-notes-exporter.com",
+  "keywords": [
+    "apple",
+    "notes",
+    "routine"
+  ],
   "devDependencies": {
     "electron": "^28.2.0"
   },

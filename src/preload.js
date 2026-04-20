@@ -11,8 +11,6 @@ contextBridge.exposeInMainWorld(
         onScriptOutput: (callback) => ipcRenderer.on('script-output', (_, data) => callback(data)),
         exportNote: (paths) => ipcRenderer.invoke('export-note', paths),
         onExportProgress: (callback) => ipcRenderer.on('export-progress', (_, data) => callback(data)),
-        exportToMarkdown: (html, outputPath) => ipcRenderer.invoke('export-to-markdown', { html, outputPath }),
-        exportToRTF: (html, outputPath) => ipcRenderer.invoke('export-to-rtf', { html, outputPath }),
         exportToPDF: (html, outputPath) => ipcRenderer.invoke('export-to-pdf', { html, outputPath }),
         selectDirectory: () => ipcRenderer.invoke('select-directory'),
         checkDirectory: (path) => ipcRenderer.invoke('check-directory', path),
