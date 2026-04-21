@@ -5,6 +5,8 @@ const os = require('os');
 const fs = require('fs').promises;
 const { catalog } = require('./utils');
 const { CONTENT_DIR } = require('./constants');
+const { convertFile: convertHtmlToMd } = require('../scripts/html-to-md');
+const { convertFile: convertHtmlToPdf } = require('../scripts/html-to-pdf');
 require('@electron/remote/main').initialize();
 
 // Helper function to log script execution
@@ -193,57 +195,9 @@ ipcMain.handle('export-note', async (event, [notePath, outputDir, format]) => {
             console.log('Copying HTML file to:', targetPath);
             await fs.copyFile(sourceHtmlPath, targetPath);
         } else if (exportFormat === 'markdown') {
-            // For Markdown, convert the HTML file
-            const htmlToMdScript = path.join(__dirname, '..', 'scripts', 'html-to-md.js');
-            logScriptExecution(htmlToMdScript, [sourceHtmlPath, targetPath]);
-            
-            await new Promise((resolve, reject) => {
-                const node = spawn('node', [htmlToMdScript, sourceHtmlPath, targetPath]);
-
-                let errorOutput = '';
-
-                node.stderr.on('data', (data) => {
-                    errorOutput += data.toString();
-                });
-
-                node.on('close', (code) => {
-                    if (code === 0) {
-                        resolve();
-                    } else {
-                        reject(new Error(errorOutput || 'Failed to convert HTML to Markdown'));
-                    }
-                });
-
-                node.on('error', (error) => {
-                    reject(new Error(`Failed to start HTML to Markdown conversion: ${error.message}`));
-                });
-            });
+            await convertHtmlToMd(sourceHtmlPath, targetPath);
         } else if (exportFormat === 'pdf') {
-            // For PDF, convert the HTML file using html-to-pdf.js
-            const htmlToPdfScript = path.join(__dirname, '..', 'scripts', 'html-to-pdf.js');
-            logScriptExecution(htmlToPdfScript, [sourceHtmlPath, targetPath]);
-            
-            await new Promise((resolve, reject) => {
-                const node = spawn('node', [htmlToPdfScript, sourceHtmlPath, targetPath]);
-
-                let errorOutput = '';
-
-                node.stderr.on('data', (data) => {
-                    errorOutput += data.toString();
-                });
-
-                node.on('close', (code) => {
-                    if (code === 0) {
-                        resolve();
-                    } else {
-                        reject(new Error(errorOutput || 'Failed to convert HTML to PDF'));
-                    }
-                });
-
-                node.on('error', (error) => {
-                    reject(new Error(`Failed to start HTML to PDF conversion: ${error.message}`));
-                });
-            });
+            await convertHtmlToPdf(sourceHtmlPath, targetPath);
         }
 
         return 'Success';
@@ -338,39 +292,13 @@ ipcMain.handle('clear-content-dir', async () => {
     }
 });
 
-// Add to your existing IPC handlers
 ipcMain.handle('export-to-pdf', async (event, { html, outputPath }) => {
   try {
-    const htmlToMdScript = path.join(__dirname, '..', 'scripts', 'html-to-pdf.js');
     const tempHtmlPath = path.join(os.tmpdir(), `${Date.now()}.html`);
-    
-    // Write HTML to temp file
     await fs.writeFile(tempHtmlPath, html);
-    
-    // Convert to PDF using the script
-    await new Promise((resolve, reject) => {
-      const node = spawn('node', [htmlToMdScript, tempHtmlPath, outputPath]);
 
-      let errorOutput = '';
+    await convertHtmlToPdf(tempHtmlPath, outputPath);
 
-      node.stderr.on('data', (data) => {
-        errorOutput += data.toString();
-      });
-
-      node.on('close', (code) => {
-        if (code === 0) {
-          resolve();
-        } else {
-          reject(new Error(errorOutput || 'Failed to convert HTML to PDF'));
-        }
-      });
-
-      node.on('error', (error) => {
-        reject(new Error(`Failed to start HTML to PDF conversion: ${error.message}`));
-      });
-    });
-
-    // Clean up temp file
     await fs.unlink(tempHtmlPath);
     
     return { success: true };
