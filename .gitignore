@@ -33,3 +33,4 @@ yarn-error.log*
 # Build artifacts
 build/*
 !build/entitlements.mac.plist
+!build/icon.icns
