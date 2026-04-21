@@ -14,6 +14,16 @@ function logScriptExecution(scriptPath, args) {
     console.log('[script]', scriptPath, args.join(' '));
 }
 
+// Resolve a bundled script path to its on-disk location. When packaged,
+// scripts live in app.asar.unpacked because external binaries (osascript)
+// cannot read inside the asar archive.
+function resolveScript(...segments) {
+    return path.join(__dirname, '..', ...segments).replace(
+        `${path.sep}app.asar${path.sep}`,
+        `${path.sep}app.asar.unpacked${path.sep}`
+    );
+}
+
 let mainWindow;
 let isExporting = false;
 
@@ -57,7 +67,7 @@ ipcMain.handle('open-external', async (event, url) => {
 ipcMain.handle('scan-notes', async () => {
     try {
         return await new Promise((resolve, reject) => {
-            const scriptPath = path.join(__dirname, '..', 'scripts', 'scan.applescript');
+            const scriptPath = resolveScript('scripts', 'scan.applescript');
             logScriptExecution(scriptPath, [CONTENT_DIR]);
             
             const osascript = spawn('osascript', [scriptPath, CONTENT_DIR]);
