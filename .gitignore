@@ -31,4 +31,5 @@ yarn-error.log*
 *.swo
 
 # Build artifacts
-build/ 
+build/*
+!build/entitlements.mac.plist
