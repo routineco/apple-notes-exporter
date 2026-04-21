@@ -42,6 +42,7 @@
       "gatekeeperAssess": false,
       "entitlements": "build/entitlements.mac.plist",
       "entitlementsInherit": "build/entitlements.mac.plist",
+      "identity": "Routine (YMZXQGP887)",
       "notarize": true
     },
     "dmg": {
@@ -51,6 +52,9 @@
       "src/**/*",
       "scripts/**/*",
       "node_modules/**/*"
+    ],
+    "asarUnpack": [
+      "scripts/**/*"
     ]
   }
 }
